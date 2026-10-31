@@ -124,3 +124,68 @@ export function logout(): Promise<void> {
 export function getMe(): Promise<AuthResponse> {
   return request<AuthResponse>('/auth/me')
 }
+
+/* ------------------------------------------------------------------ */
+/* Auctions                                                            */
+/* ------------------------------------------------------------------ */
+
+export type AuctionStatus =
+  | 'draft'
+  | 'open'
+  | 'closed'
+  | 'awarded'
+  | 'cancelled'
+
+export interface Auction {
+  id: number
+  buyer_id: number
+  buyer_email: string
+  title: string
+  description: string
+  /** Integer minor units (paise). */
+  starting_price: number
+  /** Integer minor units (paise). */
+  min_decrement: number
+  currency: string
+  starts_at: string
+  ends_at: string
+  status: AuctionStatus
+  winning_bid_id: number | null
+  created_at: string
+  bid_count: number
+  lowest_bid: number | null
+}
+
+export interface AuctionInput {
+  title: string
+  description: string
+  /** Integer minor units (paise). */
+  starting_price: number
+  /** Integer minor units (paise). */
+  min_decrement: number
+  duration_hours: number
+}
+
+export function listAuctions(): Promise<Auction[]> {
+  return request<Auction[]>('/auctions')
+}
+
+export function listMyAuctions(): Promise<Auction[]> {
+  return request<Auction[]>('/auctions/mine')
+}
+
+export function getAuction(id: number): Promise<Auction> {
+  return request<Auction>(`/auctions/${id}`)
+}
+
+export function createAuction(input: AuctionInput): Promise<Auction> {
+  return request<Auction>('/auctions', { method: 'POST', body: input })
+}
+
+export function closeAuction(id: number): Promise<Auction> {
+  return request<Auction>(`/auctions/${id}/close`, { method: 'POST' })
+}
+
+export function cancelAuction(id: number): Promise<Auction> {
+  return request<Auction>(`/auctions/${id}/cancel`, { method: 'POST' })
+}

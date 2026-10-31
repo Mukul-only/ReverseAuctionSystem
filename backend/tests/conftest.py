@@ -9,32 +9,109 @@ os.environ.setdefault("SECRET_KEY", "test-only-" + "a" * 64)
 from collections.abc import Iterator  # noqa: E402
 
 import pytest  # noqa: E402
-from sqlalchemy import create_engine  # noqa: E402
+from fastapi.testclient import TestClient  # noqa: E402
+from sqlalchemy import Engine, create_engine  # noqa: E402
 from sqlalchemy.orm import Session, sessionmaker  # noqa: E402
 from sqlalchemy.pool import StaticPool  # noqa: E402
 
 from app.db import (  # noqa: E402
     Base,
     configure_sqlite_engine,
+    get_db,
     install_guards,
+)
+from app.main import app  # noqa: E402
+from app.routers.auctions import create_limiter  # noqa: E402
+from app.routers.auth import (  # noqa: E402
+    login_account_limiter,
+    login_ip_limiter,
+    register_limiter,
+)
+
+PASSWORD = "Str0ng-Passphrase-42"
+COOKIE = "__Host-ra_session"
+
+_LIMITERS = (
+    login_ip_limiter,
+    login_account_limiter,
+    register_limiter,
+    create_limiter,
 )
 
 
 @pytest.fixture()
-def db() -> Iterator[Session]:
-    """Isolated in-memory database with production pragmas and triggers."""
-    engine = create_engine(
+def engine() -> Iterator[Engine]:
+    """In-memory database with production pragmas, tables, and triggers."""
+    bind = create_engine(
         "sqlite://",
         connect_args={"check_same_thread": False},
         poolclass=StaticPool,
     )
-    configure_sqlite_engine(engine)
-    Base.metadata.create_all(bind=engine)
-    install_guards(engine)
+    configure_sqlite_engine(bind)
+    Base.metadata.create_all(bind=bind)
+    install_guards(bind)
 
-    test_session = sessionmaker(bind=engine, expire_on_commit=False)
-    with test_session() as session:
+    yield bind
+
+    Base.metadata.drop_all(bind=bind)
+    bind.dispose()
+
+
+@pytest.fixture()
+def session_factory(engine: Engine) -> sessionmaker[Session]:
+    """Factory for direct database access inside a test.
+
+    Used to set up state the API cannot reach — for example, backdating an
+    auction so it looks expired.
+    """
+    return sessionmaker(bind=engine, expire_on_commit=False)
+
+
+@pytest.fixture()
+def db(session_factory: sessionmaker[Session]) -> Iterator[Session]:
+    """A session bound to the same database the client uses."""
+    with session_factory() as session:
         yield session
 
-    Base.metadata.drop_all(bind=engine)
-    engine.dispose()
+
+@pytest.fixture()
+def client(session_factory: sessionmaker[Session]) -> Iterator[TestClient]:
+    """Test client wired to the isolated database.
+
+    ``https`` base URL so ``Secure``/``__Host-`` cookies are stored, and the
+    in-memory limiters are cleared so tests cannot leak budget into each other.
+    """
+
+    def override_get_db() -> Iterator[Session]:
+        session = session_factory()
+        try:
+            yield session
+        finally:
+            session.close()
+
+    app.dependency_overrides[get_db] = override_get_db
+    for limiter in _LIMITERS:
+        limiter.clear()
+
+    with TestClient(app, base_url="https://testserver") as test_client:
+        yield test_client
+
+    app.dependency_overrides.clear()
+
+
+def register(
+    client: TestClient,
+    *,
+    email: str = "buyer@example.com",
+    password: str = PASSWORD,
+    role: str = "buyer",
+):
+    """Register and start a session, returning the raw response."""
+    return client.post(
+        "/api/auth/register",
+        json={"email": email, "password": password, "role": role},
+    )
+
+
+def csrf_of(response) -> str:
+    return response.json()["csrf_token"]

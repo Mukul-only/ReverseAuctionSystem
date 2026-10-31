@@ -57,3 +57,16 @@ class Auction(Base, TimestampMixin):
 
     def __repr__(self) -> str:  # pragma: no cover - debugging aid
         return f"<Auction id={self.id} title={self.title!r} status={self.status}>"
+
+    @property
+    def bid_count(self) -> int:
+        return len(self.bids)
+
+    @property
+    def lowest_bid(self) -> int | None:
+        return min((bid.amount for bid in self.bids), default=None)
+
+    @property
+    def buyer_email(self) -> str:
+        """Denormalised owner identity for display; never used for authz."""
+        return self.buyer.email

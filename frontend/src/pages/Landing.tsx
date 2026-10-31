@@ -13,9 +13,9 @@ const MILESTONES: Array<{ id: string; label: string; state: MilestoneState }> = 
   { id: '01', label: 'API + SPA scaffold', state: 'done' },
   { id: '02', label: 'Data layer', state: 'done' },
   { id: '03', label: 'Auth, sessions, CSRF', state: 'done' },
-  { id: '04', label: 'RBAC + ownership checks', state: 'next' },
-  { id: '05', label: 'Auction lifecycle', state: 'pending' },
-  { id: '06', label: 'Signed bid ledger', state: 'pending' },
+  { id: '04', label: 'RBAC + ownership checks', state: 'done' },
+  { id: '05', label: 'Auction lifecycle', state: 'done' },
+  { id: '06', label: 'Signed bid ledger', state: 'next' },
 ]
 
 const FEATURES = [

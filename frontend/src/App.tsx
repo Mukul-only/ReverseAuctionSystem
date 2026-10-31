@@ -4,6 +4,8 @@ import { AppShell } from './components/AppShell'
 import { Landing } from './pages/Landing'
 import { Login } from './pages/Login'
 import { Auctions } from './pages/Auctions'
+import { NewAuction } from './pages/NewAuction'
+import { AuctionDetail } from './pages/AuctionDetail'
 import { Security } from './pages/Security'
 import { NotFound } from './pages/NotFound'
 
@@ -15,6 +17,8 @@ export default function App() {
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
           <Route path="/auctions" element={<Auctions />} />
+          <Route path="/auctions/new" element={<NewAuction />} />
+          <Route path="/auctions/:id" element={<AuctionDetail />} />
           <Route path="/security" element={<Security />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

@@ -1,70 +1,8 @@
 from __future__ import annotations
 
-from collections.abc import Iterator
-
-import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session, sessionmaker
-from sqlalchemy.pool import StaticPool
 
-from app.db import Base, configure_sqlite_engine, get_db, install_guards
-from app.main import app
-from app.routers.auth import (
-    login_account_limiter,
-    login_ip_limiter,
-    register_limiter,
-)
-
-PASSWORD = "Str0ng-Passphrase-42"
-COOKIE = "__Host-ra_session"
-
-
-@pytest.fixture()
-def client() -> Iterator[TestClient]:
-    engine = create_engine(
-        "sqlite://",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
-    configure_sqlite_engine(engine)
-    Base.metadata.create_all(bind=engine)
-    install_guards(engine)
-    test_session = sessionmaker(bind=engine, expire_on_commit=False)
-
-    def override_get_db() -> Iterator[Session]:
-        db = test_session()
-        try:
-            yield db
-        finally:
-            db.close()
-
-    app.dependency_overrides[get_db] = override_get_db
-    login_ip_limiter.clear()
-    login_account_limiter.clear()
-    register_limiter.clear()
-
-    # https so Secure/__Host- cookies are actually stored and replayed.
-    with TestClient(app, base_url="https://testserver") as test_client:
-        yield test_client
-
-    app.dependency_overrides.clear()
-    Base.metadata.drop_all(bind=engine)
-    engine.dispose()
-
-
-def register(
-    client: TestClient,
-    *,
-    email: str = "buyer@example.com",
-    password: str = PASSWORD,
-    role: str = "buyer",
-):
-    return client.post(
-        "/api/auth/register",
-        json={"email": email, "password": password, "role": role},
-    )
-
+from conftest import COOKIE, PASSWORD, register
 
 # --------------------------------------------------------------------------
 # Registration and sessions

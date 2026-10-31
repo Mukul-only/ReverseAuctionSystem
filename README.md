@@ -19,9 +19,9 @@ control is proven by an attack test suite.
 | 1 | Scaffold — FastAPI, React SPA, Geist design system, health check | ✅ done |
 | 2 | Data layer — models, SQLite WAL, append-only guards, seed data | ✅ done |
 | 3 | Auth core — Argon2id, sessions, CSRF, rate limits | ✅ done |
-| 4 | RBAC + ownership checks | ⬜ next |
-| 5 | Auction lifecycle | ⬜ |
-| 6 | Signed bid ledger | ⬜ |
+| 4 | RBAC + ownership checks | ✅ done |
+| 5 | Auction lifecycle | ✅ done |
+| 6 | Signed bid ledger | ⬜ next |
 | 7 | WebSocket live feed | ⬜ |
 | 8 | TOTP MFA + admin dashboard | ⬜ |
 | 9 | Hash-chained audit log | ⬜ |
@@ -109,6 +109,12 @@ cd backend
 | POST | `/api/auth/login` | Authenticate and rotate the session |
 | POST | `/api/auth/logout` | Revoke the session (requires CSRF) |
 | GET | `/api/auth/me` | Current user + CSRF token |
+| GET | `/api/auctions` | List open auctions (public) |
+| GET | `/api/auctions/mine` | Auctions owned by the caller |
+| POST | `/api/auctions` | Create an auction (buyer + CSRF only) |
+| GET | `/api/auctions/{id}` | Auction detail (public) |
+| POST | `/api/auctions/{id}/close` | Close an ended auction (owner only) |
+| POST | `/api/auctions/{id}/cancel` | Cancel an auction (owner or admin) |
 | GET | `/api/docs` | OpenAPI UI (Swagger) |
 
 ---
@@ -125,17 +131,18 @@ cd backend
 │   │   ├── db.py            # engine, WAL pragmas, append-only triggers
 │   │   ├── models/          # users, sessions, auctions, bids, audit events
 │   │   ├── schemas/         # Pydantic request/response models
-│   │   ├── routers/         # health, auth
-│   │   ├── services/        # registration, authentication, lockout
-│   │   └── security/        # Argon2id, sessions, CSRF, rate limiting
+│   │   ├── routers/         # health, auth, auctions
+│   │   ├── services/        # auth policy, auction lifecycle + ownership
+│   │   └── security/        # Argon2id, sessions, CSRF, rate limiting, text
 │   ├── scripts/seed.py      # demo users + auctions
 │   ├── tests/
 │   └── requirements.txt
 ├── frontend/
 │   └── src/
-│       ├── components/ui/   # Button, Input, Card, Badge, Eyebrow
-│       ├── pages/           # Landing, Auctions, Security, NotFound
-│       ├── lib/             # api client, class helper
+│       ├── components/ui/   # Button, Input, Textarea, Card, Badge, Eyebrow
+│       ├── components/auction/  # cards, status badge, countdown
+│       ├── pages/           # Landing, Login, Auctions, NewAuction, Detail
+│       ├── lib/             # api client, class + money/date helpers
 │       └── index.css        # Geist tokens + mesh gradient
 └── docs/
     └── DESIGN.md            # adopted design system
@@ -143,15 +150,32 @@ cd backend
 
 ---
 
+## Authorization model
+
+| Action | Buyer | Seller | Admin |
+|---|---|---|---|
+| List / read auctions | ✅ | ✅ | ✅ |
+| Create an auction | ✅ | ❌ | ❌ |
+| Close an ended auction | owner only | ❌ | ❌ |
+| Cancel an open auction | owner only | ❌ | ✅ |
+
+Every mutation also requires a session-bound CSRF token. Ownership is checked
+server-side on every route, so changing an ID in the URL cannot reach another
+buyer's auction (IDOR).
+
+---
+
 ## Security notes for reviewers
 
 - Secrets live only in `backend/.env` (git-ignored); `.env.example` documents
   the shape.
-- Sessions will use `__Host-` cookies with `HttpOnly`, `Secure`, and
+- Sessions use `__Host-` cookies with `HttpOnly`, `Secure`, and
   `SameSite=Lax`.
 - Baseline headers are already applied: `X-Content-Type-Options`,
   `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, and a strict CSP
   when the backend serves the built SPA.
 - The SPA fallback rejects `api/` and `ws/` prefixes and blocks path traversal
   by resolving candidates against the dist root.
-- Money will be stored as integer minor units — never floats.
+- Money is stored as integer minor units — never floats.
+- Auction titles and descriptions are tag-stripped on write; React escapes on
+  render, so user content cannot execute script.
