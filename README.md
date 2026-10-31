@@ -21,8 +21,8 @@ control is proven by an attack test suite.
 | 3 | Auth core — Argon2id, sessions, CSRF, rate limits | ✅ done |
 | 4 | RBAC + ownership checks | ✅ done |
 | 5 | Auction lifecycle | ✅ done |
-| 6 | Signed bid ledger | ⬜ next |
-| 7 | WebSocket live feed | ⬜ |
+| 6 | Signed bid ledger — descending rules, HMAC per bid, hash chain, verification | ✅ done |
+| 7 | WebSocket live feed | ⬜ next |
 | 8 | TOTP MFA + admin dashboard | ⬜ |
 | 9 | Hash-chained audit log | ⬜ |
 | 10 | Hardening pass | ⬜ |
@@ -113,8 +113,11 @@ cd backend
 | GET | `/api/auctions/mine` | Auctions owned by the caller |
 | POST | `/api/auctions` | Create an auction (buyer + CSRF only) |
 | GET | `/api/auctions/{id}` | Auction detail (public) |
-| POST | `/api/auctions/{id}/close` | Close an ended auction (owner only) |
+| POST | `/api/auctions/{id}/close` | Close an ended auction and award the lowest bid (owner only) |
 | POST | `/api/auctions/{id}/cancel` | Cancel an auction (owner or admin) |
+| GET | `/api/auctions/{id}/bids` | Signed bid ledger in placement order (public) |
+| POST | `/api/auctions/{id}/bids` | Place a descending bid (seller + CSRF; idempotent) |
+| GET | `/api/auctions/{id}/verify` | Recompute the hash chain and report tampering |
 | GET | `/api/docs` | OpenAPI UI (Swagger) |
 
 ---
@@ -131,10 +134,10 @@ cd backend
 │   │   ├── db.py            # engine, WAL pragmas, append-only triggers
 │   │   ├── models/          # users, sessions, auctions, bids, audit events
 │   │   ├── schemas/         # Pydantic request/response models
-│   │   ├── routers/         # health, auth, auctions
-│   │   ├── services/        # auth policy, auction lifecycle + ownership
-│   │   └── security/        # Argon2id, sessions, CSRF, rate limiting, text
-│   ├── scripts/seed.py      # demo users + auctions
+│   │   ├── routers/         # health, auth, auctions, bids
+│   │   ├── services/        # auth policy, auction lifecycle + ownership, bids
+│   │   └── security/        # Argon2id, sessions, CSRF, rate limiting, HKDF/HMAC
+│   ├── scripts/seed.py      # demo users, auctions, signed bids
 │   ├── tests/
 │   └── requirements.txt
 ├── frontend/
@@ -158,10 +161,13 @@ cd backend
 | Create an auction | ✅ | ❌ | ❌ |
 | Close an ended auction | owner only | ❌ | ❌ |
 | Cancel an open auction | owner only | ❌ | ✅ |
+| Place a descending bid | ❌ | ✅ | ❌ |
+| Read the bid ledger / verify chain | ✅ | ✅ | ✅ |
 
 Every mutation also requires a session-bound CSRF token. Ownership is checked
 server-side on every route, so changing an ID in the URL cannot reach another
-buyer's auction (IDOR).
+buyer's auction (IDOR). Sellers can only bid as themselves, and an auction owner
+can never bid on their own requirement even if their role changes.
 
 ---
 
@@ -179,3 +185,25 @@ buyer's auction (IDOR).
 - Money is stored as integer minor units — never floats.
 - Auction titles and descriptions are tag-stripped on write; React escapes on
   render, so user content cannot execute script.
+
+### Signed bid ledger (Milestone 6)
+
+- Bids are **strictly descending**: each new amount must be at least one
+  `min_decrement` below the current lowest (or the starting price for the
+  first bid). A `BEFORE INSERT` SQLite trigger re-checks the ceiling so a
+  race cannot slip in a non-descending bid.
+- Each bid is signed with **HMAC-SHA256** under a per-auction key derived from
+  `SECRET_KEY` via **HKDF-SHA256**. The signed payload is canonical JSON over
+  `auction_id`, `seller_id`, `amount`, `nonce`, `created_at`, and `prev_hash`.
+- `prev_hash` is the previous bid's signature, forming an append-only
+  **hash chain**. `GET /api/auctions/{id}/verify` recomputes every signature
+  and link; a mismatch names the first bad bid.
+- `bids` rows are **immutable at the database level** (no-update / no-delete
+  triggers). Verification therefore detects edits or deletions performed
+  outside the application, even if an attacker disables the triggers.
+- Bids are **idempotent**: `(auction_id, idempotency_key)` is unique. An
+  identical retry returns `200` with the original row; reuse with a different
+  amount returns `409`.
+- Honest limitation: HMAC protects against database-level tampering, not a
+  fully malicious server that holds the signing key. The full threat model is
+  written up with the Milestone 12 documentation.

@@ -24,6 +24,7 @@ from .config import get_settings
 from .db import init_db
 from .routers.auctions import router as auctions_router
 from .routers.auth import router as auth_router
+from .routers.bids import router as bids_router
 
 settings = get_settings()
 
@@ -39,7 +40,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(
     title=settings.app_name,
-    version="0.5.0",
+    version="0.6.0",
     docs_url="/api/docs",
     redoc_url=None,
     openapi_url="/api/openapi.json",
@@ -110,6 +111,7 @@ app.add_middleware(
 
 app.include_router(auth_router)
 app.include_router(auctions_router)
+app.include_router(bids_router)
 
 
 @app.get("/api/health", tags=["system"])

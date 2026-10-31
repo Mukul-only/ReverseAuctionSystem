@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import timedelta
 
-from sqlalchemy import select, update
+from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from ..models import Auction, AuctionStatus, Role, User
@@ -33,20 +33,42 @@ class AuctionForbidden(AuctionError):
     pass
 
 
-def _finalise_expired(db: Session) -> None:
-    """Move open auctions past their deadline to CLOSED.
+def _resolve_winner(auction: Auction) -> None:
+    """Award the lowest bid, or close an auction that received none.
 
-    Winner resolution is added in the bidding milestone; for now closing is
-    purely a state transition.
+    Bids are strictly descending by construction, but we still take the
+    minimum and break ties by id so the result is deterministic.
     """
-    db.execute(
-        update(Auction)
-        .where(
-            Auction.status == AuctionStatus.OPEN,
-            Auction.ends_at <= utcnow(),
+    lowest = min(auction.bids, key=lambda bid: (bid.amount, bid.id), default=None)
+    if lowest is None:
+        auction.winning_bid_id = None
+        auction.status = AuctionStatus.CLOSED
+    else:
+        auction.winning_bid_id = lowest.id
+        auction.status = AuctionStatus.AWARDED
+
+
+def _finalise_expired(db: Session) -> None:
+    """Close and resolve every open auction whose deadline has passed.
+
+    This runs on reads so a demo never leaves an auction stuck past its end
+    time. It is idempotent: only OPEN rows are touched.
+    """
+    expired = list(
+        db.scalars(
+            select(Auction)
+            .where(
+                Auction.status == AuctionStatus.OPEN,
+                Auction.ends_at <= utcnow(),
+            )
+            .options(selectinload(Auction.bids))
         )
-        .values(status=AuctionStatus.CLOSED)
     )
+    if not expired:
+        return
+
+    for auction in expired:
+        _resolve_winner(auction)
     db.commit()
 
 
@@ -113,20 +135,25 @@ def create(
 
 
 def close(db: Session, auction: Auction, actor: User) -> Auction:
-    """Close an ended auction. Only the owning buyer may do this."""
+    """Close an ended auction and award it to the lowest bid.
+
+    Only the owning buyer may do this. Calling it twice is harmless: an auction
+    already finalised by the expiry sweep is returned unchanged.
+    """
     if auction.buyer_id != actor.id:
         raise AuctionForbidden
 
-    if auction.status in (AuctionStatus.CANCELLED, AuctionStatus.AWARDED):
+    if auction.status == AuctionStatus.CANCELLED:
         raise AuctionStateError("Auction cannot be closed in its current state.")
+
+    if auction.status in (AuctionStatus.CLOSED, AuctionStatus.AWARDED):
+        return auction
 
     if auction.ends_at > utcnow():
         raise AuctionStateError("Auction has not ended yet.")
 
-    if auction.status == AuctionStatus.OPEN:
-        auction.status = AuctionStatus.CLOSED
-        db.commit()
-
+    _resolve_winner(auction)
+    db.commit()
     return auction
 
 

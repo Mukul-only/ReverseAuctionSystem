@@ -4,7 +4,8 @@ Run from ``backend/``::
 
     .venv/bin/python -m scripts.seed
 
-Idempotent: existing users and auctions are left untouched.
+Idempotent: existing users and auctions are left untouched, and the two signed
+demo bids per auction use stable idempotency keys, so re-running adds nothing.
 """
 
 from __future__ import annotations
@@ -17,6 +18,7 @@ from app.db import SessionLocal, init_db
 from app.models import Auction, AuctionStatus, Role, User
 from app.models.mixins import utcnow
 from app.security.passwords import hash_password
+from app.services import bid_service
 
 DEMO_PASSWORD = "DemoPass!234"
 
@@ -82,35 +84,61 @@ def seed() -> None:
 
         buyer = users["buyer@revauction.dev"]
         auctions_created = 0
+        seeded_auctions: list[Auction] = []
 
         for spec in AUCTION_SPECS:
             title = str(spec["title"])
             existing = db.scalar(select(Auction).where(Auction.title == title))
             if existing is not None:
+                seeded_auctions.append(existing)
                 continue
 
-            db.add(
-                Auction(
-                    buyer_id=buyer.id,
-                    title=title,
-                    description=str(spec["description"]),
-                    starting_price=int(spec["starting_price"]),  # type: ignore[arg-type]
-                    min_decrement=int(spec["min_decrement"]),  # type: ignore[arg-type]
-                    currency="INR",
-                    starts_at=now - timedelta(hours=1),
-                    ends_at=now + spec["ends_in"],  # type: ignore[operator]
-                    status=AuctionStatus.OPEN,
-                )
+            auction = Auction(
+                buyer_id=buyer.id,
+                title=title,
+                description=str(spec["description"]),
+                starting_price=int(spec["starting_price"]),  # type: ignore[arg-type]
+                min_decrement=int(spec["min_decrement"]),  # type: ignore[arg-type]
+                currency="INR",
+                starts_at=now - timedelta(hours=1),
+                ends_at=now + spec["ends_in"],  # type: ignore[operator]
+                status=AuctionStatus.OPEN,
             )
+            db.add(auction)
+            seeded_auctions.append(auction)
             auctions_created += 1
 
         db.commit()
+
+        # Two signed, chained bids per open auction, using stable idempotency
+        # keys so re-running the seed is a no-op.
+        sellers = [
+            users["seller@revauction.dev"],
+            users["seller2@revauction.dev"],
+        ]
+        bids_created = 0
+        for auction in seeded_auctions:
+            for offset, seller in enumerate(sellers, start=1):
+                amount = auction.starting_price - auction.min_decrement * offset
+                try:
+                    _, created = bid_service.place(
+                        db,
+                        auction,
+                        seller,
+                        amount=amount,
+                        idempotency_key=f"seed-{auction.id}-{offset}",
+                    )
+                except bid_service.BidError:
+                    continue
+                if created:
+                    bids_created += 1
 
     print("Seed complete.")
     print(f"  users: {len(DEMO_USERS)}  (password: {DEMO_PASSWORD})")
     for email, role in DEMO_USERS:
         print(f"    - {email:<28} {role.value}")
     print(f"  auctions created: {auctions_created}")
+    print(f"  signed bids created: {bids_created}")
 
 
 if __name__ == "__main__":

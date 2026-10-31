@@ -95,6 +95,24 @@ GUARD_STATEMENTS: tuple[str, ...] = (
         SELECT RAISE(ABORT, 'bids are immutable');
     END
     """,
+    # Defense in depth for concurrency: SQLite serialises writers, so this
+    # trigger re-checks the descending ceiling against the committed state at
+    # insert time. The service layer validates first for friendly errors.
+    """
+    CREATE TRIGGER IF NOT EXISTS bids_descending_insert
+    BEFORE INSERT ON bids
+    BEGIN
+        SELECT RAISE(ABORT, 'bid is not below the current lowest')
+        WHERE NEW.amount > (
+            SELECT COALESCE(
+                (SELECT MIN(amount) FROM bids WHERE auction_id = NEW.auction_id),
+                a.starting_price
+            ) - a.min_decrement
+            FROM auctions AS a
+            WHERE a.id = NEW.auction_id
+        );
+    END
+    """,
 )
 
 

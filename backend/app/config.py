@@ -62,6 +62,10 @@ class Settings(BaseSettings):
     lockout_threshold: int = 5
     lockout_minutes: int = 15
 
+    # Bidding
+    bid_rate_limit: int = 30
+    bid_rate_window_seconds: int = 60
+
     @property
     def allowed_origins(self) -> list[str]:
         """Origins permitted to send state-changing requests.

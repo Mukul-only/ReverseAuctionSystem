@@ -61,5 +61,10 @@ class Bid(Base):
     auction: Mapped["Auction"] = relationship(back_populates="bids")
     seller: Mapped["User"] = relationship()
 
+    @property
+    def seller_email(self) -> str:
+        """Denormalised bidder identity for display; never used for authz."""
+        return self.seller.email
+
     def __repr__(self) -> str:  # pragma: no cover - debugging aid
         return f"<Bid id={self.id} auction={self.auction_id} amount={self.amount}>"

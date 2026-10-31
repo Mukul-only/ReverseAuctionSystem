@@ -27,6 +27,7 @@ from app.routers.auth import (  # noqa: E402
     login_ip_limiter,
     register_limiter,
 )
+from app.routers.bids import bid_limiter  # noqa: E402
 
 PASSWORD = "Str0ng-Passphrase-42"
 COOKIE = "__Host-ra_session"
@@ -36,6 +37,7 @@ _LIMITERS = (
     login_account_limiter,
     register_limiter,
     create_limiter,
+    bid_limiter,
 )
 
 

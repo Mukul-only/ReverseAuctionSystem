@@ -97,7 +97,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <footer className="border-t border-hairline">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-2 px-6 py-8 text-body-sm text-mute sm:flex-row sm:items-center sm:justify-between">
           <span>Reverse Auction System — MCA project</span>
-          <span className="font-mono">build 0.5.0 · milestone 5</span>
+          <span className="font-mono">build 0.6.0 · milestone 6</span>
         </div>
       </footer>
     </div>

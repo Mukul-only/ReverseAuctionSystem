@@ -189,3 +189,47 @@ export function closeAuction(id: number): Promise<Auction> {
 export function cancelAuction(id: number): Promise<Auction> {
   return request<Auction>(`/auctions/${id}/cancel`, { method: 'POST' })
 }
+
+/* ------------------------------------------------------------------ */
+/* Signed bid ledger                                                   */
+/* ------------------------------------------------------------------ */
+
+export interface Bid {
+  id: number
+  auction_id: number
+  seller_id: number
+  seller_email: string
+  /** Integer minor units (paise). */
+  amount: number
+  nonce: string
+  prev_hash: string | null
+  signature: string
+  created_at: string
+}
+
+export interface ChainVerification {
+  auction_id: number
+  bid_count: number
+  checked: number
+  valid: boolean
+  first_invalid_bid_id: number | null
+  reason: string | null
+}
+
+export function listBids(auctionId: number): Promise<Bid[]> {
+  return request<Bid[]>(`/auctions/${auctionId}/bids`)
+}
+
+export function placeBid(
+  auctionId: number,
+  input: { amount: number; idempotency_key: string },
+): Promise<Bid> {
+  return request<Bid>(`/auctions/${auctionId}/bids`, {
+    method: 'POST',
+    body: input,
+  })
+}
+
+export function verifyAuction(auctionId: number): Promise<ChainVerification> {
+  return request<ChainVerification>(`/auctions/${auctionId}/verify`)
+}
