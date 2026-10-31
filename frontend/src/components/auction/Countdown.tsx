@@ -25,7 +25,7 @@ export function Countdown({
   return (
     <span
       className={cn(
-        'font-mono text-body-sm',
+        'text-body-sm',
         ended ? 'text-mute' : 'text-ink',
         className,
       )}

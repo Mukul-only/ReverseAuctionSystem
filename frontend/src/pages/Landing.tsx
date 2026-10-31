@@ -90,7 +90,7 @@ export function Landing() {
                 Read the security model
               </Button>
             </div>
-            <p className="mt-6 font-mono text-body-sm text-mute">
+            <p className="mt-6 text-body-sm text-mute">
               argon2id · server sessions · hmac-sha256 ledger
             </p>
           </div>
@@ -107,13 +107,13 @@ export function Landing() {
             </div>
 
             <div className="mt-5 rounded-sm border border-hairline bg-canvas px-4 py-3">
-              <div className="flex items-center justify-between gap-3 font-mono text-body-sm">
+              <div className="flex items-center justify-between gap-3 text-body-sm">
                 <span className="text-mute">GET /api/health</span>
                 <span className="text-ink">
                   {offline ? 'unreachable' : health ? '200 OK' : 'waiting'}
                 </span>
               </div>
-              <p className="mt-1 truncate font-mono text-body-sm text-mute">
+              <p className="mt-1 truncate text-body-sm text-mute">
                 {health ? `${health.service} · ${health.env}` : 'no response yet'}
               </p>
             </div>
@@ -131,11 +131,11 @@ export function Landing() {
                     )}
                     aria-hidden="true"
                   />
-                  <span className="font-mono text-body-sm text-mute">
+                  <span className="text-body-sm text-mute">
                     {milestone.id}
                   </span>
                   <span className="text-body-md text-body">{milestone.label}</span>
-                  <span className="ml-auto font-mono text-body-sm text-mute">
+                  <span className="ml-auto text-body-sm text-mute">
                     {milestone.state}
                   </span>
                 </li>
@@ -154,7 +154,7 @@ export function Landing() {
           <div className="mt-8 grid gap-4 md:grid-cols-3">
             {FEATURES.map((feature) => (
               <Card key={feature.index}>
-                <span className="font-mono text-body-sm text-mute">
+                <span className="text-body-sm text-mute">
                   {feature.index}
                 </span>
                 <h3 className="mt-3 text-heading-md text-ink">{feature.title}</h3>

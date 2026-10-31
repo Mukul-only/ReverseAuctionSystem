@@ -133,7 +133,7 @@ function UsersPanel() {
       )}
 
       {loading ? (
-        <p className="mt-6 font-mono text-body-sm text-mute">LOADING...</p>
+        <p className="mt-6 text-body-sm text-mute">LOADING...</p>
       ) : (
         <div className="mt-6 overflow-x-auto rounded-md border border-hairline">
           <table className="w-full min-w-[48rem] text-left text-body-md">
@@ -178,7 +178,7 @@ function UsersPanel() {
                         {row.totp_enabled ? 'on' : 'off'}
                       </Badge>
                     </td>
-                    <td className="px-4 py-3 font-mono text-body-sm text-body">
+                    <td className="px-4 py-3 text-body-sm text-body">
                       {row.active_sessions}
                     </td>
                     <td className="px-4 py-3">
@@ -253,13 +253,13 @@ function EventTable({ events }: { events: AuditEvent[] }) {
           ) : (
             events.map((event) => (
               <tr key={event.seq} className="border-b border-hairline last:border-0">
-                <td className="px-4 py-3 font-mono text-body-sm text-mute">
+                <td className="px-4 py-3 text-body-sm text-mute">
                   {event.seq}
                 </td>
                 <td className="px-4 py-3 text-body-sm text-body">
                   {formatDateTime(event.created_at)}
                 </td>
-                <td className="px-4 py-3 font-mono text-body-sm text-ink">
+                <td className="px-4 py-3 text-body-sm text-ink">
                   {event.action}
                 </td>
                 <td className="px-4 py-3 text-body-sm text-body">
@@ -271,7 +271,7 @@ function EventTable({ events }: { events: AuditEvent[] }) {
                     : '—'}
                 </td>
                 <td
-                  className="px-4 py-3 font-mono text-body-sm text-mute"
+                  className="px-4 py-3 text-body-sm text-mute"
                   title={event.hash}
                 >
                   {event.hash.slice(0, 12)}…
@@ -368,11 +368,11 @@ function AuditPanel() {
             <Badge tone={report.valid ? 'active' : 'danger'}>
               {report.valid ? 'chain intact' : 'tamper detected'}
             </Badge>
-            <span className="font-mono text-body-sm text-mute">
+            <span className="text-body-sm text-mute">
               {report.checked}/{report.event_count} events signed
             </span>
             {report.head_seq !== null && (
-              <span className="font-mono text-body-sm text-mute">
+              <span className="text-body-sm text-mute">
                 head #{report.head_seq}
               </span>
             )}
@@ -385,8 +385,8 @@ function AuditPanel() {
 
       {anchor && (
         <Card className="mt-4">
-          <span className="font-mono text-body-sm text-mute">SIGNED HEAD</span>
-          <code className="mt-2 block break-all font-mono text-body-sm text-body">
+          <span className="text-body-sm text-mute">SIGNED HEAD</span>
+          <code className="mt-2 block break-all text-body-sm text-body">
             seq={anchor.seq} count={anchor.event_count}
             <br />
             {anchor.signature}
@@ -451,7 +451,7 @@ export function Admin() {
     return (
       <section className="mx-auto w-full max-w-3xl px-6 py-16">
         <Card className="flex flex-col items-start gap-3 p-10">
-          <span className="font-mono text-body-sm text-mute">AUTH REQUIRED</span>
+          <span className="text-body-sm text-mute">AUTH REQUIRED</span>
           <h1 className="text-heading-md text-ink">Sign in as an administrator.</h1>
           <Link to="/login" className="text-body-md text-link hover:underline">
             Go to sign in
@@ -465,7 +465,7 @@ export function Admin() {
     return (
       <section className="mx-auto w-full max-w-3xl px-6 py-16">
         <Card className="flex flex-col items-start gap-3 p-10">
-          <span className="font-mono text-body-sm text-error">FORBIDDEN</span>
+          <span className="text-body-sm text-error">FORBIDDEN</span>
           <h1 className="text-heading-md text-ink">Administrator access required.</h1>
           <Link to="/auctions" className="text-body-md text-link hover:underline">
             Back to auctions

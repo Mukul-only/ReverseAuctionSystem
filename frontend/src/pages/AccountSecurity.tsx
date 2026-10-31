@@ -29,7 +29,7 @@ export function AccountSecurity() {
     return (
       <section className="mx-auto w-full max-w-2xl px-6 py-16">
         <Card className="flex flex-col items-start gap-3 p-10">
-          <span className="font-mono text-body-sm text-mute">AUTH REQUIRED</span>
+          <span className="text-body-sm text-mute">AUTH REQUIRED</span>
           <h1 className="text-heading-md text-ink">Sign in to manage security.</h1>
           <Link to="/login" className="text-body-md text-link hover:underline">
             Go to sign in
@@ -111,7 +111,7 @@ export function AccountSecurity() {
         <Badge tone={user.totp_enabled ? 'active' : 'warning'}>
           {user.totp_enabled ? 'TOTP enabled' : 'TOTP not enabled'}
         </Badge>
-        <span className="font-mono text-body-sm text-mute">
+        <span className="text-body-sm text-mute">
           {user.email} · {user.role}
         </span>
       </div>
@@ -166,7 +166,7 @@ export function AccountSecurity() {
                 required
                 value={code}
                 onChange={(event) => setCode(event.target.value.replace(/\D/g, ''))}
-                className="font-mono tracking-[0.3em]"
+                className="tracking-[0.3em]"
               />
             </div>
             <div className="sm:col-span-2">
@@ -188,14 +188,14 @@ export function AccountSecurity() {
             code to finish. The secret is stored encrypted at rest.
           </p>
           <div className="mt-4 rounded-sm border border-hairline bg-canvas p-4">
-            <span className="block font-mono text-body-sm text-mute">SECRET</span>
-            <code className="mt-1 block break-all font-mono text-body-md text-ink">
+            <span className="block text-body-sm text-mute">SECRET</span>
+            <code className="mt-1 block break-all text-body-md text-ink">
               {pending.secret}
             </code>
-            <span className="mt-3 block font-mono text-body-sm text-mute">
+            <span className="mt-3 block text-body-sm text-mute">
               OTPAUTH URI
             </span>
-            <code className="mt-1 block break-all font-mono text-body-sm text-body">
+            <code className="mt-1 block break-all text-body-sm text-body">
               {pending.otpauth_uri}
             </code>
           </div>
@@ -225,7 +225,7 @@ export function AccountSecurity() {
                 required
                 value={code}
                 onChange={(event) => setCode(event.target.value.replace(/\D/g, ''))}
-                className="font-mono tracking-[0.3em]"
+                className="tracking-[0.3em]"
                 placeholder="123456"
               />
             </div>
@@ -277,7 +277,7 @@ export function AccountSecurity() {
       )}
 
       {user.role === 'admin' && (
-        <p className="mt-6 font-mono text-body-sm text-mute">
+        <p className="mt-6 text-body-sm text-mute">
           Administrator tools require this factor.{' '}
           <Link to="/admin" className="text-link hover:underline">
             Open the console

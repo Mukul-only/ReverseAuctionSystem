@@ -263,7 +263,7 @@ export function AuctionDetail() {
       <section className="mx-auto w-full max-w-3xl px-6 py-16">
         <Eyebrow>Auction</Eyebrow>
         <Card className="mt-6 flex flex-col items-start gap-3">
-          <span className="font-mono text-body-sm text-mute">404</span>
+          <span className="text-body-sm text-mute">404</span>
           <h1 className="text-heading-md text-ink">
             {error ?? 'Auction not found.'}
           </h1>
@@ -308,7 +308,7 @@ export function AuctionDetail() {
     <section className="mx-auto w-full max-w-6xl px-6 py-16">
       <Link
         to="/auctions"
-        className="font-mono text-body-sm text-mute hover:text-ink"
+        className="text-body-sm text-mute hover:text-ink"
       >
         ← All auctions
       </Link>
@@ -336,9 +336,9 @@ export function AuctionDetail() {
             <div>
               <Eyebrow>Awarded</Eyebrow>
               <p className="mt-1 text-body-md text-ink">
-                <span className="font-mono">{winningBid.seller_email}</span> won
+                <span>{winningBid.seller_email}</span> won
                 at{' '}
-                <span className="font-mono">
+                <span>
                   {formatMoney(winningBid.amount, auction.currency)}
                 </span>
                 .
@@ -362,7 +362,7 @@ export function AuctionDetail() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <Eyebrow>Bid ledger</Eyebrow>
               <div className="flex items-center gap-3">
-                <span className="font-mono text-body-sm text-mute">
+                <span className="text-body-sm text-mute">
                   {auction.bid_count} {auction.bid_count === 1 ? 'bid' : 'bids'}
                 </span>
                 <Badge
@@ -413,7 +413,7 @@ export function AuctionDetail() {
               <div className="mt-4 overflow-x-auto">
                 <table className="w-full border-collapse text-left">
                   <thead>
-                    <tr className="font-mono text-eyebrow uppercase text-mute">
+                    <tr className="text-eyebrow uppercase text-mute">
                       <th className="py-2 pr-3 font-medium">Bidder</th>
                       <th className="py-2 pr-3 font-medium">Amount</th>
                       <th className="py-2 pr-3 font-medium">Signature</th>
@@ -426,21 +426,21 @@ export function AuctionDetail() {
                         <td className="max-w-[12rem] truncate py-2.5 pr-3 text-body-md text-body">
                           {bid.seller_email}
                           {index === 0 && auction.status === 'open' && (
-                            <span className="ml-2 font-mono text-body-sm text-link">
+                            <span className="ml-2 text-body-sm text-link">
                               lowest
                             </span>
                           )}
                         </td>
-                        <td className="whitespace-nowrap py-2.5 pr-3 font-mono text-body-md text-ink">
+                        <td className="whitespace-nowrap py-2.5 pr-3 text-body-md text-ink">
                           {formatMoney(bid.amount, auction.currency)}
                         </td>
                         <td
-                          className="whitespace-nowrap py-2.5 pr-3 font-mono text-body-sm text-mute"
+                          className="whitespace-nowrap py-2.5 pr-3 text-body-sm text-mute"
                           title={bid.signature}
                         >
                           {bid.signature.slice(0, 10)}…
                         </td>
-                        <td className="whitespace-nowrap py-2.5 font-mono text-body-sm text-mute">
+                        <td className="whitespace-nowrap py-2.5 text-body-sm text-mute">
                           {formatDateTime(bid.created_at)}
                         </td>
                       </tr>
@@ -451,7 +451,7 @@ export function AuctionDetail() {
             )}
 
             {verification && (
-              <p className="mt-4 border-t border-hairline pt-3 font-mono text-body-sm text-mute">
+              <p className="mt-4 border-t border-hairline pt-3 text-body-sm text-mute">
                 verified {verification.checked}/{verification.bid_count}{' '}
                 signatures · HMAC-SHA256 chain
               </p>
@@ -463,13 +463,13 @@ export function AuctionDetail() {
             <dl className="mt-3 divide-y divide-hairline border-y border-hairline">
               <div className="flex items-center justify-between py-2.5">
                 <dt className="text-body-sm text-mute">Opened</dt>
-                <dd className="font-mono text-body-md text-ink">
+                <dd className="text-body-md text-ink">
                   {formatDateTime(auction.starts_at)}
                 </dd>
               </div>
               <div className="flex items-center justify-between py-2.5">
                 <dt className="text-body-sm text-mute">Closes</dt>
-                <dd className="font-mono text-body-md text-ink">
+                <dd className="text-body-md text-ink">
                   {formatDateTime(auction.ends_at)}
                 </dd>
               </div>
@@ -489,26 +489,26 @@ export function AuctionDetail() {
             <dl className="mt-4 divide-y divide-hairline border-y border-hairline">
               <div className="flex items-center justify-between py-2.5">
                 <dt className="text-body-sm text-mute">Starting price</dt>
-                <dd className="font-mono text-body-md text-ink">
+                <dd className="text-body-md text-ink">
                   {formatMoney(auction.starting_price, auction.currency)}
                 </dd>
               </div>
               <div className="flex items-center justify-between py-2.5">
                 <dt className="text-body-sm text-mute">Min. decrement</dt>
-                <dd className="font-mono text-body-md text-ink">
+                <dd className="text-body-md text-ink">
                   {formatMoney(auction.min_decrement, auction.currency)}
                 </dd>
               </div>
               <div className="flex items-center justify-between py-2.5">
                 <dt className="text-body-sm text-mute">Bids</dt>
-                <dd className="font-mono text-body-md text-ink">
+                <dd className="text-body-md text-ink">
                   {auction.bid_count}
                 </dd>
               </div>
               {auction.status === 'open' && ceiling > 0 && (
                 <div className="flex items-center justify-between py-2.5">
                   <dt className="text-body-sm text-mute">Max next bid</dt>
-                  <dd className="font-mono text-body-md text-ink">
+                  <dd className="text-body-md text-ink">
                     {formatMoney(ceiling, auction.currency)}
                   </dd>
                 </div>
@@ -572,7 +572,7 @@ export function AuctionDetail() {
               <Eyebrow>Place a bid</Eyebrow>
               <p className="mt-2 text-body-sm text-body">
                 Bid at or below{' '}
-                <span className="font-mono text-ink">
+                <span className="text-ink">
                   {formatMoney(ceiling, auction.currency)}
                 </span>{' '}
                 to beat the current lowest by the minimum decrement.
@@ -612,7 +612,7 @@ export function AuctionDetail() {
                   {bidPending ? 'Signing...' : 'Sign and place bid'}
                 </Button>
               </form>
-              <p className="mt-3 font-mono text-body-sm text-mute">
+              <p className="mt-3 text-body-sm text-mute">
                 HMAC-SHA256 · prev-hash chain · idempotent
               </p>
             </Card>

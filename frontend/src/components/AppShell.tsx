@@ -24,7 +24,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <header className="sticky top-0 z-40 border-b border-hairline bg-canvas/85 backdrop-blur">
         <div className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between gap-4 px-6">
           <Link to="/" className="flex items-center gap-2.5">
-            <span className="grid size-6 place-items-center rounded-sm bg-primary font-mono text-[11px] text-on-primary">
+            <span className="grid size-6 place-items-center rounded-sm bg-primary text-[11px] text-on-primary">
               RA
             </span>
             <span className="text-label-sm text-ink">REVAUCTION</span>
@@ -75,7 +75,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
           <div className="flex items-center gap-2">
             {loading ? (
-              <span className="hidden font-mono text-body-sm text-mute sm:inline">
+              <span className="hidden text-body-sm text-mute sm:inline">
                 checking…
               </span>
             ) : user ? (
@@ -123,7 +123,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <footer className="border-t border-hairline">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-2 px-6 py-8 text-body-sm text-mute sm:flex-row sm:items-center sm:justify-between">
           <span>Reverse Auction System — MCA project</span>
-          <span className="font-mono">build 0.8.0 · milestone 8</span>
+          <span>build 0.8.0 · milestone 8</span>
         </div>
       </footer>
     </div>

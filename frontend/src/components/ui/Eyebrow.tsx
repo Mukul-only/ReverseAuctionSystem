@@ -9,7 +9,7 @@ export function Eyebrow({
   className?: string
 }) {
   return (
-    <p className={cn('font-mono text-eyebrow uppercase text-mute', className)}>
+    <p className={cn('text-eyebrow uppercase text-mute', className)}>
       {children}
     </p>
   )

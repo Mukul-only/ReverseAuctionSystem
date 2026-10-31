@@ -26,7 +26,7 @@ export function AuctionCard({ auction }: { auction: Auction }) {
 
         <div className="mt-auto grid grid-cols-2 gap-4 border-t border-hairline pt-4">
           <div>
-            <p className="font-mono text-eyebrow uppercase text-mute">
+            <p className="text-eyebrow uppercase text-mute">
               {hasBids ? 'Lowest bid' : 'Starting price'}
             </p>
             <p className="mt-1 text-heading-md text-ink">
@@ -34,7 +34,7 @@ export function AuctionCard({ auction }: { auction: Auction }) {
             </p>
           </div>
           <div>
-            <p className="font-mono text-eyebrow uppercase text-mute">Bids</p>
+            <p className="text-eyebrow uppercase text-mute">Bids</p>
             <p className="mt-1 text-heading-md text-ink">{auction.bid_count}</p>
           </div>
         </div>
@@ -44,7 +44,7 @@ export function AuctionCard({ auction }: { auction: Auction }) {
           {auction.status === 'open' ? (
             <Countdown endsAt={auction.ends_at} />
           ) : (
-            <span className="font-mono">{auction.status}</span>
+            <span>{auction.status}</span>
           )}
         </div>
       </Link>

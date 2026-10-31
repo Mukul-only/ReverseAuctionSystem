@@ -50,7 +50,7 @@ export function Security() {
       <div className="mt-8 grid gap-4 md:grid-cols-2">
         {CONTROLS.map((control, index) => (
           <Card key={control.area} className="flex gap-4">
-            <span className="font-mono text-body-sm text-mute">
+            <span className="text-body-sm text-mute">
               {String(index + 1).padStart(2, '0')}
             </span>
             <div>

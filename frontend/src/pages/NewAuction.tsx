@@ -28,7 +28,7 @@ function Field({
           {label}
         </label>
         {hint && (
-          <span className="font-mono text-body-sm text-mute">{hint}</span>
+          <span className="text-body-sm text-mute">{hint}</span>
         )}
       </div>
       {children}
@@ -52,7 +52,7 @@ export function NewAuction() {
   if (loading) {
     return (
       <section className="mx-auto w-full max-w-6xl px-6 py-16">
-        <p className="font-mono text-body-sm text-mute">checking session...</p>
+        <p className="text-body-sm text-mute">checking session...</p>
       </section>
     )
   }
@@ -68,7 +68,7 @@ export function NewAuction() {
         <Card className="mt-6 flex flex-col items-start gap-3">
           <h1 className="text-heading-md text-ink">Buyers post auctions.</h1>
           <p className="text-body-md text-body">
-            Your account has the <span className="font-mono">{user.role}</span>{' '}
+            Your account has the <span>{user.role}</span>{' '}
             role. Sellers compete on auctions; they cannot create them.
           </p>
           <Button variant="ghost-sm" onClick={() => navigate('/auctions')}>
@@ -239,19 +239,19 @@ export function NewAuction() {
           <dl className="mt-5 divide-y divide-hairline border-y border-hairline">
             <div className="flex items-center justify-between py-2.5">
               <dt className="text-body-sm text-mute">Opening price</dt>
-              <dd className="font-mono text-body-md text-ink">
+              <dd className="text-body-md text-ink">
                 {startingMinor > 0 ? formatMoney(startingMinor) : '—'}
               </dd>
             </div>
             <div className="flex items-center justify-between py-2.5">
               <dt className="text-body-sm text-mute">Minimum decrement</dt>
-              <dd className="font-mono text-body-md text-ink">
+              <dd className="text-body-md text-ink">
                 {decrementMinor > 0 ? formatMoney(decrementMinor) : '—'}
               </dd>
             </div>
             <div className="flex items-center justify-between py-2.5">
               <dt className="text-body-sm text-mute">Closes in</dt>
-              <dd className="font-mono text-body-md text-ink">
+              <dd className="text-body-md text-ink">
                 {Number.isInteger(duration) && duration > 0
                   ? `${duration} h`
                   : '—'}

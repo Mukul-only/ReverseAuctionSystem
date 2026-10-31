@@ -114,7 +114,7 @@ export function Auctions() {
           </div>
         ) : error ? (
           <Card className="flex flex-col items-start gap-3">
-            <span className="font-mono text-body-sm text-error">ERROR</span>
+            <span className="text-body-sm text-error">ERROR</span>
             <h2 className="text-heading-md text-ink">Could not load auctions.</h2>
             <p className="text-body-md text-body">{error}</p>
             <Button
@@ -126,7 +126,7 @@ export function Auctions() {
           </Card>
         ) : auctions.length === 0 ? (
           <Card className="flex flex-col items-start gap-3 p-10">
-            <span className="font-mono text-body-sm text-mute">EMPTY</span>
+            <span className="text-body-sm text-mute">EMPTY</span>
             <h2 className="text-heading-md text-ink">
               {shownTab === 'mine'
                 ? 'You have not posted an auction yet.'

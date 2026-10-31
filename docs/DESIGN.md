@@ -38,7 +38,8 @@ Colour is **never** the sole carrier of meaning: status is a label plus a dot.
 
 ### Typography
 
-Geist Sans + Geist Mono, self-hosted via `@fontsource-variable/*`.
+Geist Sans, self-hosted via `@fontsource-variable/geist`. A single typeface is
+used throughout; the project does not ship a monospace font.
 
 | Utility | Size / line | Weight | Tracking |
 |---|---|---|---|
@@ -46,7 +47,7 @@ Geist Sans + Geist Mono, self-hosted via `@fontsource-variable/*`.
 | `text-heading-lg` | 32 / 40 | 600 | −1.28px |
 | `text-heading-md` | 20 / 28 | 600 | −0.4px |
 | `text-label-sm` | 14 / 20 | 500 | −0.28px |
-| `text-eyebrow` | 12 / 16 | 500 | 0 (uppercase, mono) |
+| `text-eyebrow` | 12 / 16 | 500 | 0 (uppercase) |
 | `text-body-lg` | 16 / 24 | 400 | 0 |
 | `text-body-md` | 14 / 20 | 400 | 0 |
 | `text-body-sm` | 12 / 16 | 400 | 0 |
@@ -81,7 +82,7 @@ Mixing these in one context is a design error.
 | `button-primary-sm` / `button-ghost-sm` | `Button` variant `primary-sm` / `ghost-sm` |
 | `text-input` | `components/ui/Input.tsx` |
 | `feature-card` / `pricing-card` | `components/ui/Card.tsx` |
-| `code-block` | `rounded-md border border-hairline bg-elevated p-4 font-mono text-body-sm` |
+| `code-block` | `rounded-md border border-hairline bg-elevated p-4 text-body-sm` |
 | `button-category-pill` | admin tabs and auction filters |
 | `hero-band` + mesh | `Landing` page, `.mesh-gradient` |
 

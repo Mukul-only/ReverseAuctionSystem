@@ -170,7 +170,7 @@ export function Login() {
                       setCode(event.target.value.replace(/\D/g, ''))
                     }
                     placeholder="123456"
-                    className="font-mono tracking-[0.3em]"
+                    className="tracking-[0.3em]"
                   />
                 </div>
 
@@ -325,7 +325,7 @@ export function Login() {
                 </Button>
               </form>
 
-              <p className="mt-5 font-mono text-body-sm text-mute">
+              <p className="mt-5 text-body-sm text-mute">
                 sessions expire after 30 minutes idle
               </p>
             </>

@@ -6,7 +6,9 @@
  */
 @theme {
   --font-sans: 'Geist Variable', Arial, sans-serif;
-  --font-mono: 'Geist Mono Variable', ui-monospace, SFMono-Regular, Menlo, monospace;
+  /* Single-typeface project: the "mono" theme slot resolves to the same sans
+     face, so nothing — including Tailwind preflight — can render monospace. */
+  --font-mono: var(--font-sans);
 
   /* Surfaces */
   --color-canvas: #fafafa;
@@ -91,6 +93,17 @@
 @layer base {
   body {
     @apply bg-canvas font-sans text-body-md text-body antialiased;
+  }
+
+  /*
+   * The project uses a single typeface. Inline code and other elements that
+   * browsers default to a monospace stack inherit the sans font instead.
+   */
+  code,
+  pre,
+  kbd,
+  samp {
+    font-family: inherit;
   }
 
   ::selection {
