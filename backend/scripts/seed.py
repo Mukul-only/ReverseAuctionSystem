@@ -21,10 +21,10 @@ from app.security.passwords import hash_password
 DEMO_PASSWORD = "DemoPass!234"
 
 DEMO_USERS: tuple[tuple[str, Role], ...] = (
-    ("admin@revauction.local", Role.ADMIN),
-    ("buyer@revauction.local", Role.BUYER),
-    ("seller@revauction.local", Role.SELLER),
-    ("seller2@revauction.local", Role.SELLER),
+    ("admin@revauction.dev", Role.ADMIN),
+    ("buyer@revauction.dev", Role.BUYER),
+    ("seller@revauction.dev", Role.SELLER),
+    ("seller2@revauction.dev", Role.SELLER),
 )
 
 AUCTION_SPECS: tuple[dict[str, object], ...] = (
@@ -80,7 +80,7 @@ def seed() -> None:
                 db.flush()
             users[email] = user
 
-        buyer = users["buyer@revauction.local"]
+        buyer = users["buyer@revauction.dev"]
         auctions_created = 0
 
         for spec in AUCTION_SPECS:

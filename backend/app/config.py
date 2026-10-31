@@ -54,6 +54,33 @@ class Settings(BaseSettings):
     session_absolute_hours: int = 12
     cookie_secure: bool = True
 
+    # Abuse controls
+    login_rate_limit: int = 10
+    login_rate_window_seconds: int = 300
+    register_rate_limit: int = 5
+    register_rate_window_seconds: int = 3600
+    lockout_threshold: int = 5
+    lockout_minutes: int = 15
+
+    @property
+    def allowed_origins(self) -> list[str]:
+        """Origins permitted to send state-changing requests.
+
+        Vite dev, plus both loopback spellings of the built app. Keep this
+        list explicit: the Origin check is the login-CSRF guard.
+        """
+        return list(
+            dict.fromkeys(
+                [
+                    self.frontend_origin,
+                    "http://localhost:5173",
+                    "http://127.0.0.1:5173",
+                    "http://localhost:8000",
+                    "http://127.0.0.1:8000",
+                ]
+            )
+        )
+
     @field_validator("secret_key")
     @classmethod
     def _reject_weak_secret(cls, value: str) -> str:

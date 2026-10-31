@@ -14,7 +14,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
@@ -22,6 +22,7 @@ from starlette.responses import Response
 
 from .config import get_settings
 from .db import init_db
+from .routers.auth import router as auth_router
 
 settings = get_settings()
 
@@ -37,7 +38,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(
     title=settings.app_name,
-    version="0.1.0",
+    version="0.3.0",
     docs_url="/api/docs",
     redoc_url=None,
     openapi_url="/api/openapi.json",
@@ -76,7 +77,27 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         return response
 
 
+class OriginCheckMiddleware(BaseHTTPMiddleware):
+    """Reject state-changing requests from untrusted origins.
+
+    This is the login-CSRF guard: it applies even to endpoints that have no
+    session yet. Same-origin requests may omit Origin, which is fine.
+    """
+
+    _MUTATING_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
+
+    async def dispatch(self, request: Request, call_next) -> Response:  # type: ignore[no-untyped-def]
+        if request.method in self._MUTATING_METHODS:
+            origin = request.headers.get("origin")
+            if origin is not None and origin not in settings.allowed_origins:
+                return JSONResponse(
+                    {"detail": "Origin not allowed."}, status_code=403
+                )
+        return await call_next(request)
+
+
 app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(OriginCheckMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[settings.frontend_origin],
@@ -84,6 +105,9 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "X-CSRF-Token", "Idempotency-Key"],
 )
+
+
+app.include_router(auth_router)
 
 
 @app.get("/api/health", tags=["system"])

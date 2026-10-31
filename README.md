@@ -18,8 +18,8 @@ control is proven by an attack test suite.
 |---|---|---|
 | 1 | Scaffold — FastAPI, React SPA, Geist design system, health check | ✅ done |
 | 2 | Data layer — models, SQLite WAL, append-only guards, seed data | ✅ done |
-| 3 | Auth core — Argon2id, sessions, CSRF, rate limits | ⬜ next |
-| 4 | RBAC + ownership checks | ⬜ |
+| 3 | Auth core — Argon2id, sessions, CSRF, rate limits | ✅ done |
+| 4 | RBAC + ownership checks | ⬜ next |
 | 5 | Auction lifecycle | ⬜ |
 | 6 | Signed bid ledger | ⬜ |
 | 7 | WebSocket live feed | ⬜ |
@@ -64,8 +64,8 @@ Seed demo data (idempotent):
 ```
 
 Demo accounts all use `DemoPass!234`:
-`admin@revauction.local`, `buyer@revauction.local`, `seller@revauction.local`,
-`seller2@revauction.local`.
+`admin@revauction.dev`, `buyer@revauction.dev`, `seller@revauction.dev`,
+`seller2@revauction.dev`.
 
 The app **refuses to boot** if `SECRET_KEY` is missing, shorter than 32
 characters, or a known placeholder.
@@ -105,6 +105,10 @@ cd backend
 | Method | Path | Purpose |
 |---|---|---|
 | GET | `/api/health` | Liveness probe |
+| POST | `/api/auth/register` | Create a buyer/seller account and session |
+| POST | `/api/auth/login` | Authenticate and rotate the session |
+| POST | `/api/auth/logout` | Revoke the session (requires CSRF) |
+| GET | `/api/auth/me` | Current user + CSRF token |
 | GET | `/api/docs` | OpenAPI UI (Swagger) |
 
 ---
@@ -120,7 +124,10 @@ cd backend
 │   │   ├── config.py        # env settings, weak-secret guard
 │   │   ├── db.py            # engine, WAL pragmas, append-only triggers
 │   │   ├── models/          # users, sessions, auctions, bids, audit events
-│   │   └── security/        # Argon2id password hashing
+│   │   ├── schemas/         # Pydantic request/response models
+│   │   ├── routers/         # health, auth
+│   │   ├── services/        # registration, authentication, lockout
+│   │   └── security/        # Argon2id, sessions, CSRF, rate limiting
 │   ├── scripts/seed.py      # demo users + auctions
 │   ├── tests/
 │   └── requirements.txt
