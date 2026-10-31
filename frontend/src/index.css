@@ -1,0 +1,137 @@
+@import 'tailwindcss';
+
+/*
+ * Vercel / Geist design tokens.
+ * Source spec: docs/DESIGN.md (adopted from vercel.md).
+ */
+@theme {
+  --font-sans: 'Geist Variable', Arial, sans-serif;
+  --font-mono: 'Geist Mono Variable', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Surfaces */
+  --color-canvas: #fafafa;
+  --color-elevated: #ffffff;
+  --color-hairline: #ebebeb;
+  --color-hairline-soft: #f2f2f2;
+
+  /* Ink ladder */
+  --color-ink: #171717;
+  --color-body: #4d4d4d;
+  --color-mute: #8f8f8f;
+  --color-faint: #a1a1a1;
+  --color-primary: #171717;
+  --color-on-primary: #ffffff;
+
+  /* Accents (used sparingly) */
+  --color-link: #0070f3;
+  --color-link-deep: #0761d1;
+  --color-link-soft: #d3e5ff;
+  --color-error: #ee0000;
+  --color-error-deep: #c50000;
+  --color-warning: #f5a623;
+  --color-warning-soft: #ffefcf;
+  --color-warning-deep: #ab570a;
+  --color-violet: #7928ca;
+  --color-cyan: #50e3c2;
+  --color-pink: #ff0080;
+  --color-magenta: #eb367f;
+
+  /* Radii */
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-pill-cat: 64px;
+  --radius-pill: 100px;
+
+  /* Elevation */
+  --shadow-whisper: 0 1px 1px rgba(0, 0, 0, 0.04);
+  --shadow-float:
+    0 2px 2px rgba(0, 0, 0, 0.04), 0 8px 16px -4px rgba(0, 0, 0, 0.08);
+
+  /* Typography scale */
+  --text-display-xl: 48px;
+  --text-display-xl--line-height: 48px;
+  --text-display-xl--font-weight: 600;
+  --text-display-xl--letter-spacing: -2.4px;
+
+  --text-heading-lg: 32px;
+  --text-heading-lg--line-height: 40px;
+  --text-heading-lg--font-weight: 600;
+  --text-heading-lg--letter-spacing: -1.28px;
+
+  --text-heading-md: 20px;
+  --text-heading-md--line-height: 28px;
+  --text-heading-md--font-weight: 600;
+  --text-heading-md--letter-spacing: -0.4px;
+
+  --text-label-sm: 14px;
+  --text-label-sm--line-height: 20px;
+  --text-label-sm--font-weight: 500;
+  --text-label-sm--letter-spacing: -0.28px;
+
+  --text-eyebrow: 12px;
+  --text-eyebrow--line-height: 16px;
+  --text-eyebrow--font-weight: 500;
+
+  --text-body-lg: 16px;
+  --text-body-lg--line-height: 24px;
+  --text-body-md: 14px;
+  --text-body-md--line-height: 20px;
+  --text-body-sm: 12px;
+  --text-body-sm--line-height: 16px;
+
+  --text-btn-lg: 16px;
+  --text-btn-lg--line-height: 20px;
+  --text-btn-lg--font-weight: 500;
+  --text-btn-md: 14px;
+  --text-btn-md--line-height: 20px;
+  --text-btn-md--font-weight: 500;
+}
+
+@layer base {
+  body {
+    @apply bg-canvas font-sans text-body-md text-body antialiased;
+  }
+
+  ::selection {
+    background-color: var(--color-ink);
+    color: var(--color-on-primary);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-link);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  /*
+   * The only decorative flourish in the system: a five-stop mesh gradient
+   * confined to the hero. Pure CSS so the CSP can stay strict.
+   */
+  .mesh-gradient {
+    position: absolute;
+    inset: -25%;
+    z-index: -1;
+    background:
+      radial-gradient(38% 40% at 18% 22%, #007cf0 0%, transparent 68%),
+      radial-gradient(34% 36% at 76% 16%, #00dfd8 0%, transparent 66%),
+      radial-gradient(42% 44% at 72% 60%, #7928ca 0%, transparent 68%),
+      radial-gradient(40% 42% at 24% 72%, #ff0080 0%, transparent 68%),
+      radial-gradient(34% 36% at 86% 84%, #f9cb28 0%, transparent 64%);
+    filter: blur(64px);
+    opacity: 0.34;
+    pointer-events: none;
+  }
+}
