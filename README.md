@@ -17,8 +17,8 @@ control is proven by an attack test suite.
 | Milestone | Scope | State |
 |---|---|---|
 | 1 | Scaffold — FastAPI, React SPA, Geist design system, health check | ✅ done |
-| 2 | Data layer — models, SQLite WAL, seed data | ⬜ next |
-| 3 | Auth core — Argon2id, sessions, CSRF, rate limits | ⬜ |
+| 2 | Data layer — models, SQLite WAL, append-only guards, seed data | ✅ done |
+| 3 | Auth core — Argon2id, sessions, CSRF, rate limits | ⬜ next |
 | 4 | RBAC + ownership checks | ⬜ |
 | 5 | Auction lifecycle | ⬜ |
 | 6 | Signed bid ledger | ⬜ |
@@ -56,6 +56,16 @@ cp .env.example .env
 python3 -c "import secrets; print(secrets.token_urlsafe(48))"
 .venv/bin/uvicorn app.main:app --reload --port 8000
 ```
+
+Seed demo data (idempotent):
+
+```bash
+.venv/bin/python -m scripts.seed
+```
+
+Demo accounts all use `DemoPass!234`:
+`admin@revauction.local`, `buyer@revauction.local`, `seller@revauction.local`,
+`seller2@revauction.local`.
 
 The app **refuses to boot** if `SECRET_KEY` is missing, shorter than 32
 characters, or a known placeholder.
@@ -108,8 +118,10 @@ cd backend
 │   ├── app/
 │   │   ├── main.py          # FastAPI app + SPA serving
 │   │   ├── config.py        # env settings, weak-secret guard
-│   │   ├── db.py            # engine, WAL pragmas, sessions
-│   │   └── models/          # SQLAlchemy models (milestone 2+)
+│   │   ├── db.py            # engine, WAL pragmas, append-only triggers
+│   │   ├── models/          # users, sessions, auctions, bids, audit events
+│   │   └── security/        # Argon2id password hashing
+│   ├── scripts/seed.py      # demo users + auctions
 │   ├── tests/
 │   └── requirements.txt
 ├── frontend/

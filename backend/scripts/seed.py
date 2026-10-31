@@ -1,0 +1,117 @@
+"""Seed demo users and auctions.
+
+Run from ``backend/``::
+
+    .venv/bin/python -m scripts.seed
+
+Idempotent: existing users and auctions are left untouched.
+"""
+
+from __future__ import annotations
+
+from datetime import timedelta
+
+from sqlalchemy import select
+
+from app.db import SessionLocal, init_db
+from app.models import Auction, AuctionStatus, Role, User
+from app.models.mixins import utcnow
+from app.security.passwords import hash_password
+
+DEMO_PASSWORD = "DemoPass!234"
+
+DEMO_USERS: tuple[tuple[str, Role], ...] = (
+    ("admin@revauction.local", Role.ADMIN),
+    ("buyer@revauction.local", Role.BUYER),
+    ("seller@revauction.local", Role.SELLER),
+    ("seller2@revauction.local", Role.SELLER),
+)
+
+AUCTION_SPECS: tuple[dict[str, object], ...] = (
+    {
+        "title": "Bulk office chairs — 120 units",
+        "description": (
+            "Ergonomic mesh chairs delivered to the Pune campus. "
+            "GST invoice required. Assembly included."
+        ),
+        "starting_price": 24_000_000,  # ₹2,40,000.00 in paise
+        "min_decrement": 50_000,  # ₹500.00
+        "ends_in": timedelta(days=2),
+    },
+    {
+        "title": "Cloud migration audit — 4 weeks",
+        "description": (
+            "Independent review of the current AWS estate, IAM boundaries, "
+            "and backup posture. Report plus remediation plan."
+        ),
+        "starting_price": 15_000_000,
+        "min_decrement": 25_000,
+        "ends_in": timedelta(days=5),
+    },
+    {
+        "title": "Campus Wi-Fi site survey",
+        "description": (
+            "Passive and active survey across three buildings. "
+            "Deliver heat maps and an AP placement plan."
+        ),
+        "starting_price": 5_000_000,
+        "min_decrement": 10_000,
+        "ends_in": timedelta(days=1),
+    },
+)
+
+
+def seed() -> None:
+    init_db()
+    now = utcnow()
+
+    with SessionLocal() as db:
+        users: dict[str, User] = {}
+
+        for email, role in DEMO_USERS:
+            user = db.scalar(select(User).where(User.email == email))
+            if user is None:
+                user = User(
+                    email=email,
+                    password_hash=hash_password(DEMO_PASSWORD),
+                    role=role,
+                )
+                db.add(user)
+                db.flush()
+            users[email] = user
+
+        buyer = users["buyer@revauction.local"]
+        auctions_created = 0
+
+        for spec in AUCTION_SPECS:
+            title = str(spec["title"])
+            existing = db.scalar(select(Auction).where(Auction.title == title))
+            if existing is not None:
+                continue
+
+            db.add(
+                Auction(
+                    buyer_id=buyer.id,
+                    title=title,
+                    description=str(spec["description"]),
+                    starting_price=int(spec["starting_price"]),  # type: ignore[arg-type]
+                    min_decrement=int(spec["min_decrement"]),  # type: ignore[arg-type]
+                    currency="INR",
+                    starts_at=now - timedelta(hours=1),
+                    ends_at=now + spec["ends_in"],  # type: ignore[operator]
+                    status=AuctionStatus.OPEN,
+                )
+            )
+            auctions_created += 1
+
+        db.commit()
+
+    print("Seed complete.")
+    print(f"  users: {len(DEMO_USERS)}  (password: {DEMO_PASSWORD})")
+    for email, role in DEMO_USERS:
+        print(f"    - {email:<28} {role.value}")
+    print(f"  auctions created: {auctions_created}")
+
+
+if __name__ == "__main__":
+    seed()
