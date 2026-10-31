@@ -21,6 +21,7 @@ from app.db import (  # noqa: E402
     install_guards,
 )
 from app.main import app  # noqa: E402
+from app.realtime import hub as auction_hub  # noqa: E402
 from app.routers.auctions import create_limiter  # noqa: E402
 from app.routers.auth import (  # noqa: E402
     login_account_limiter,
@@ -94,10 +95,13 @@ def client(session_factory: sessionmaker[Session]) -> Iterator[TestClient]:
     app.dependency_overrides[get_db] = override_get_db
     for limiter in _LIMITERS:
         limiter.clear()
+    # The hub is a process singleton; do not leak sockets between tests.
+    auction_hub.reset()
 
     with TestClient(app, base_url="https://testserver") as test_client:
         yield test_client
 
+    auction_hub.reset()
     app.dependency_overrides.clear()
 
 

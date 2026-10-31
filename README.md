@@ -22,8 +22,8 @@ control is proven by an attack test suite.
 | 4 | RBAC + ownership checks | ✅ done |
 | 5 | Auction lifecycle | ✅ done |
 | 6 | Signed bid ledger — descending rules, HMAC per bid, hash chain, verification | ✅ done |
-| 7 | WebSocket live feed | ⬜ next |
-| 8 | TOTP MFA + admin dashboard | ⬜ |
+| 7 | Live feed — authenticated WebSocket, origin checks, polling fallback | ✅ done |
+| 8 | TOTP MFA + admin dashboard | ⬜ next |
 | 9 | Hash-chained audit log | ⬜ |
 | 10 | Hardening pass | ⬜ |
 | 11 | Attack test suite + demo script | ⬜ |
@@ -118,6 +118,7 @@ cd backend
 | GET | `/api/auctions/{id}/bids` | Signed bid ledger in placement order (public) |
 | POST | `/api/auctions/{id}/bids` | Place a descending bid (seller + CSRF; idempotent) |
 | GET | `/api/auctions/{id}/verify` | Recompute the hash chain and report tampering |
+| WS | `/ws/auctions/{id}` | Live bid/status feed (session cookie + Origin check) |
 | GET | `/api/docs` | OpenAPI UI (Swagger) |
 
 ---
@@ -132,9 +133,10 @@ cd backend
 │   │   ├── main.py          # FastAPI app + SPA serving
 │   │   ├── config.py        # env settings, weak-secret guard
 │   │   ├── db.py            # engine, WAL pragmas, append-only triggers
+│   │   ├── realtime.py      # per-auction WebSocket hub + wire format
 │   │   ├── models/          # users, sessions, auctions, bids, audit events
 │   │   ├── schemas/         # Pydantic request/response models
-│   │   ├── routers/         # health, auth, auctions, bids
+│   │   ├── routers/         # health, auth, auctions, bids, ws
 │   │   ├── services/        # auth policy, auction lifecycle + ownership, bids
 │   │   └── security/        # Argon2id, sessions, CSRF, rate limiting, HKDF/HMAC
 │   ├── scripts/seed.py      # demo users, auctions, signed bids
@@ -144,6 +146,7 @@ cd backend
 │   └── src/
 │       ├── components/ui/   # Button, Input, Textarea, Card, Badge, Eyebrow
 │       ├── components/auction/  # cards, status badge, countdown
+│       ├── hooks/           # useAuctionSocket (live feed + reconnect)
 │       ├── pages/           # Landing, Login, Auctions, NewAuction, Detail
 │       ├── lib/             # api client, class + money/date helpers
 │       └── index.css        # Geist tokens + mesh gradient
@@ -207,3 +210,22 @@ can never bid on their own requirement even if their role changes.
 - Honest limitation: HMAC protects against database-level tampering, not a
   fully malicious server that holds the signing key. The full threat model is
   written up with the Milestone 12 documentation.
+
+### Live feed (Milestone 7)
+
+- `/ws/auctions/{id}` broadcasts a `snapshot` on connect, then `bid`,
+  `auction`, and `presence` frames as state changes. Writes stay on the
+  CSRF-protected HTTP routes; the socket is read-only plus a ping/pong
+  heartbeat.
+- **Origin allowlist (CSWSH defense):** browsers always send `Origin` on the
+  handshake. A mismatching origin is refused before the upgrade, so a hostile
+  page cannot ride a victim's session cookie. This mirrors the HTTP mutation
+  policy because `BaseHTTPMiddleware` does not run for WebSockets.
+- **Session required:** the handshake must carry a valid `__Host-` session
+  cookie (closing with `4401` otherwise). The SPA falls back to polling when
+  anonymous or disconnected.
+- A per-auction viewer cap (200) bounds resource use; the hub is in-process
+  and single-node by design for the demo.
+- The client reconnects with exponential backoff, sends a heartbeat, and keeps
+  a slow poll running as a safety net so missed frames (including deadline
+  closes) are reconciled.

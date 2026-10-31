@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 from ..db import get_db
 from ..dependencies import get_current_user, require_csrf, require_roles
 from ..models import Auction, Role, User, UserSession
+from ..realtime import auction_event, hub
 from ..schemas.auction import AuctionCreate, AuctionOut
 from ..security.ratelimit import SlidingWindowLimiter
 from ..services import auction_service
@@ -109,6 +110,7 @@ def close_auction(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail=str(error)
         ) from None
+    hub.broadcast_threadsafe(auction.id, auction_event(auction))
     return AuctionOut.model_validate(auction)
 
 
@@ -131,4 +133,5 @@ def cancel_auction(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail=str(error)
         ) from None
+    hub.broadcast_threadsafe(auction.id, auction_event(auction))
     return AuctionOut.model_validate(auction)

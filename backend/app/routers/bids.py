@@ -13,6 +13,7 @@ from ..config import get_settings
 from ..db import get_db
 from ..dependencies import require_csrf, require_roles
 from ..models import Auction, Role, User, UserSession
+from ..realtime import bid_event, hub
 from ..schemas.bid import BidCreate, BidOut, ChainVerification
 from ..security.ratelimit import SlidingWindowLimiter
 from ..services import auction_service, bid_service
@@ -94,6 +95,9 @@ def place_bid(
     if not created:
         # Idempotent replay: the resource already exists.
         response.status_code = status.HTTP_200_OK
+    else:
+        # Push the new signed bid to every live viewer of this auction.
+        hub.broadcast_threadsafe(auction.id, bid_event(bid, auction))
     return BidOut.model_validate(bid)
 
 

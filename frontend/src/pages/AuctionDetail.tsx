@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useAuth } from '../auth/context'
+import { useAuctionSocket } from '../hooks/useAuctionSocket'
 import { AuctionStatusBadge } from '../components/auction/AuctionStatusBadge'
 import { Countdown } from '../components/auction/Countdown'
 import { Badge } from '../components/ui/Badge'
@@ -18,6 +19,7 @@ import {
   placeBid,
   verifyAuction,
   type Auction,
+  type AuctionSocketMessage,
   type Bid,
   type ChainVerification,
 } from '../lib/api'
@@ -61,6 +63,8 @@ export function AuctionDetail() {
   const [bidPending, setBidPending] = useState(false)
   const [bidError, setBidError] = useState<string | null>(null)
   const [bidNotice, setBidNotice] = useState<string | null>(null)
+  const [viewers, setViewers] = useState<number | null>(null)
+  const hasLoadedRef = useRef(false)
 
   const refreshFeed = useCallback(async () => {
     const [nextAuction, nextBids] = await Promise.all([
@@ -71,18 +75,57 @@ export function AuctionDetail() {
     setBids(nextBids)
   }, [auctionId])
 
+  const handleSocketMessage = useCallback((message: AuctionSocketMessage) => {
+    switch (message.type) {
+      case 'snapshot':
+        setAuction(message.auction)
+        setBids(message.bids)
+        setError(null)
+        break
+      case 'bid':
+        setAuction(message.auction)
+        setBids((current) =>
+          current.some((bid) => bid.id === message.bid.id)
+            ? current
+            : [...current, message.bid],
+        )
+        break
+      case 'auction':
+        setAuction(message.auction)
+        break
+      case 'presence':
+        setViewers(message.viewers)
+        break
+      default:
+        break
+    }
+  }, [])
+
   /*
-   * Interim live feed: a 4-second poll while the tab is visible. Milestone 7
-   * replaces this with a WebSocket broadcast and keeps polling as fallback.
+   * Live feed. Signed-in viewers hold a WebSocket; anonymous visitors fall
+   * back to polling. Even when the socket is open we keep a slow poll as a
+   * safety net, which also catches deadline-driven closes that have no HTTP
+   * handler to broadcast from.
    */
+  const liveStatus = useAuctionSocket(auctionId, {
+    enabled: Boolean(user) && validId,
+    onMessage: handleSocketMessage,
+  })
+
+  // A new auction id means a fresh load: show the skeleton and surface errors.
+  useEffect(() => {
+    hasLoadedRef.current = false
+  }, [auctionId])
+
   useEffect(() => {
     if (!validId) return
 
     let active = true
-    let initial = true
+    const pollMs = liveStatus === 'open' ? 20_000 : 4_000
 
     async function load() {
-      if (initial) setLoading(true)
+      const first = !hasLoadedRef.current
+      if (first) setLoading(true)
       try {
         const [nextAuction, nextBids] = await Promise.all([
           getAuction(auctionId),
@@ -93,7 +136,7 @@ export function AuctionDetail() {
         setBids(nextBids)
         setError(null)
       } catch (cause) {
-        if (!active || !initial) return
+        if (!active || !first) return
         if (cause instanceof ApiError && cause.status === 404) {
           setError('Auction not found.')
         } else {
@@ -104,9 +147,9 @@ export function AuctionDetail() {
           )
         }
       } finally {
-        if (active && initial) {
+        if (active && first) {
+          hasLoadedRef.current = true
           setLoading(false)
-          initial = false
         }
       }
     }
@@ -114,13 +157,13 @@ export function AuctionDetail() {
     void load()
     const timer = window.setInterval(() => {
       if (document.visibilityState === 'visible') void load()
-    }, 4_000)
+    }, pollMs)
 
     return () => {
       active = false
       window.clearInterval(timer)
     }
-  }, [auctionId, validId, reloadToken])
+  }, [auctionId, validId, reloadToken, liveStatus])
 
   // Re-verify whenever the ledger grows or its head changes.
   const headSignature = bids.length > 0 ? bids[bids.length - 1].signature : ''
@@ -322,6 +365,23 @@ export function AuctionDetail() {
                 <span className="font-mono text-body-sm text-mute">
                   {auction.bid_count} {auction.bid_count === 1 ? 'bid' : 'bids'}
                 </span>
+                <Badge
+                  tone={
+                    liveStatus === 'open'
+                      ? 'active'
+                      : liveStatus === 'connecting'
+                        ? 'warning'
+                        : 'neutral'
+                  }
+                >
+                  {liveStatus === 'open'
+                    ? viewers !== null && viewers > 1
+                      ? `live · ${viewers} watching`
+                      : 'live'
+                    : liveStatus === 'connecting'
+                      ? 'connecting'
+                      : 'polling'}
+                </Badge>
                 {verification && (
                   <Badge tone={verification.valid ? 'active' : 'danger'}>
                     {verification.valid ? 'chain verified' : 'tamper detected'}

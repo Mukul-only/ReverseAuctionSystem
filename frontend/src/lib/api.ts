@@ -216,6 +216,14 @@ export interface ChainVerification {
   reason: string | null
 }
 
+/** Server frames from /ws/auctions/{id}. */
+export type AuctionSocketMessage =
+  | { type: 'snapshot'; auction: Auction; bids: Bid[] }
+  | { type: 'bid'; bid: Bid; auction: Auction }
+  | { type: 'auction'; auction: Auction }
+  | { type: 'presence'; viewers: number }
+  | { type: 'pong' }
+
 export function listBids(auctionId: number): Promise<Bid[]> {
   return request<Bid[]>(`/auctions/${auctionId}/bids`)
 }

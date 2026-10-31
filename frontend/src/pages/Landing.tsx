@@ -16,7 +16,8 @@ const MILESTONES: Array<{ id: string; label: string; state: MilestoneState }> = 
   { id: '04', label: 'RBAC + ownership checks', state: 'done' },
   { id: '05', label: 'Auction lifecycle', state: 'done' },
   { id: '06', label: 'Signed bid ledger', state: 'done' },
-  { id: '07', label: 'Live WebSocket feed', state: 'next' },
+  { id: '07', label: 'Live WebSocket feed', state: 'done' },
+  { id: '08', label: 'TOTP MFA + admin', state: 'next' },
 ]
 
 const FEATURES = [

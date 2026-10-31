@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from ..models import Auction, AuctionStatus, Role, User
 from ..models.mixins import utcnow
+from ..realtime import auction_event, hub
 from ..security.text import sanitize_plain_text, sanitize_single_line
 
 _EAGER = (
@@ -70,6 +71,12 @@ def _finalise_expired(db: Session) -> None:
     for auction in expired:
         _resolve_winner(auction)
     db.commit()
+
+    # A close caused by the deadline has no HTTP handler to broadcast from, so
+    # notify live viewers here. This runs in a worker thread; the hub schedules
+    # the coroutine back onto the event loop.
+    for auction in expired:
+        hub.broadcast_threadsafe(auction.id, auction_event(auction))
 
 
 def list_open(db: Session) -> list[Auction]:

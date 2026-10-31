@@ -8,6 +8,7 @@ origin).
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -22,9 +23,11 @@ from starlette.responses import Response
 
 from .config import get_settings
 from .db import init_db
+from .realtime import hub
 from .routers.auctions import router as auctions_router
 from .routers.auth import router as auth_router
 from .routers.bids import router as bids_router
+from .routers.ws import router as ws_router
 
 settings = get_settings()
 
@@ -35,12 +38,14 @@ FRONTEND_DIST = Path(__file__).resolve().parents[2] / "frontend" / "dist"
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     init_db()
+    # Sync request handlers broadcast through this loop from the threadpool.
+    hub.bind_loop(asyncio.get_running_loop())
     yield
 
 
 app = FastAPI(
     title=settings.app_name,
-    version="0.6.0",
+    version="0.7.0",
     docs_url="/api/docs",
     redoc_url=None,
     openapi_url="/api/openapi.json",
@@ -112,6 +117,7 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(auctions_router)
 app.include_router(bids_router)
+app.include_router(ws_router)
 
 
 @app.get("/api/health", tags=["system"])
