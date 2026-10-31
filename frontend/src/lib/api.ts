@@ -6,12 +6,21 @@ export interface User {
   id: number
   email: string
   role: Role
+  totp_enabled: boolean
   created_at: string
 }
 
 export interface AuthResponse {
   user: User
   csrf_token: string
+}
+
+/** Login either completes or pauses for a second factor. */
+export interface LoginResult {
+  mfa_required: boolean
+  challenge: string | null
+  user: User | null
+  csrf_token: string | null
 }
 
 export interface Health {
@@ -110,8 +119,18 @@ export function register(input: {
 export function login(input: {
   email: string
   password: string
-}): Promise<AuthResponse> {
-  return request<AuthResponse>('/auth/login', {
+}): Promise<LoginResult> {
+  return request<LoginResult>('/auth/login', {
+    method: 'POST',
+    body: input,
+  })
+}
+
+export function completeMfaLogin(input: {
+  challenge: string
+  code: string
+}): Promise<LoginResult> {
+  return request<LoginResult>('/auth/mfa/login', {
     method: 'POST',
     body: input,
   })
@@ -123,6 +142,40 @@ export function logout(): Promise<void> {
 
 export function getMe(): Promise<AuthResponse> {
   return request<AuthResponse>('/auth/me')
+}
+
+/* ------------------------------------------------------------------ */
+/* Second factor                                                       */
+/* ------------------------------------------------------------------ */
+
+export interface MfaSetup {
+  secret: string
+  otpauth_uri: string
+  issuer: string
+}
+
+export function setupMfa(password: string): Promise<MfaSetup> {
+  return request<MfaSetup>('/auth/mfa/setup', {
+    method: 'POST',
+    body: { password },
+  })
+}
+
+export function verifyMfa(password: string, code: string): Promise<AuthResponse> {
+  return request<AuthResponse>('/auth/mfa/verify', {
+    method: 'POST',
+    body: { password, code },
+  })
+}
+
+export function disableMfa(
+  password: string,
+  code: string,
+): Promise<AuthResponse> {
+  return request<AuthResponse>('/auth/mfa/disable', {
+    method: 'POST',
+    body: { password, code },
+  })
 }
 
 /* ------------------------------------------------------------------ */
@@ -240,4 +293,87 @@ export function placeBid(
 
 export function verifyAuction(auctionId: number): Promise<ChainVerification> {
   return request<ChainVerification>(`/auctions/${auctionId}/verify`)
+}
+
+/* ------------------------------------------------------------------ */
+/* Admin console                                                       */
+/* ------------------------------------------------------------------ */
+
+export interface AdminUser {
+  id: number
+  email: string
+  role: Role
+  totp_enabled: boolean
+  failed_attempts: number
+  locked_until: string | null
+  active_sessions: number
+  created_at: string
+}
+
+export interface AuditEvent {
+  seq: number
+  actor_id: number | null
+  actor_email: string | null
+  action: string
+  entity_type: string | null
+  entity_id: string | null
+  metadata: Record<string, unknown>
+  prev_hash: string | null
+  hash: string
+  created_at: string
+}
+
+export interface AuditVerifyReport {
+  event_count: number
+  checked: number
+  valid: boolean
+  first_invalid_seq: number | null
+  reason: string | null
+  head_seq: number | null
+  head_hash: string | null
+}
+
+export interface AuditAnchor {
+  seq: number | null
+  hash: string | null
+  event_count: number
+  signature: string
+}
+
+export function listAdminUsers(query = ''): Promise<AdminUser[]> {
+  const suffix = query ? `?q=${encodeURIComponent(query)}` : ''
+  return request<AdminUser[]>(`/admin/users${suffix}`)
+}
+
+export function changeUserRole(id: number, role: Role): Promise<AdminUser> {
+  return request<AdminUser>(`/admin/users/${id}/role`, {
+    method: 'PATCH',
+    body: { role },
+  })
+}
+
+export function unlockUser(id: number): Promise<AdminUser> {
+  return request<AdminUser>(`/admin/users/${id}/unlock`, { method: 'POST' })
+}
+
+export function revokeUserSessions(id: number): Promise<{ revoked: number }> {
+  return request<{ revoked: number }>(`/admin/users/${id}/revoke-sessions`, {
+    method: 'POST',
+  })
+}
+
+export function listAuditEvents(limit = 50, offset = 0): Promise<AuditEvent[]> {
+  return request<AuditEvent[]>(`/admin/audit?limit=${limit}&offset=${offset}`)
+}
+
+export function listSecurityEvents(limit = 50): Promise<AuditEvent[]> {
+  return request<AuditEvent[]>(`/admin/security-events?limit=${limit}`)
+}
+
+export function verifyAuditChain(): Promise<AuditVerifyReport> {
+  return request<AuditVerifyReport>('/admin/audit/verify', { method: 'POST' })
+}
+
+export function getAuditAnchor(): Promise<AuditAnchor> {
+  return request<AuditAnchor>('/admin/audit/anchor')
 }

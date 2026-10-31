@@ -11,6 +11,7 @@ from ..models import Auction, AuctionStatus, Role, User
 from ..models.mixins import utcnow
 from ..realtime import auction_event, hub
 from ..security.text import sanitize_plain_text, sanitize_single_line
+from . import audit_service
 
 _EAGER = (
     selectinload(Auction.buyer),
@@ -77,6 +78,21 @@ def _finalise_expired(db: Session) -> None:
     # the coroutine back onto the event loop.
     for auction in expired:
         hub.broadcast_threadsafe(auction.id, auction_event(auction))
+        try:
+            audit_service.record(
+                db,
+                actor_id=None,
+                action="auction.ended",
+                entity_type="auction",
+                entity_id=auction.id,
+                metadata={
+                    "status": auction.status.value,
+                    "winning_bid_id": auction.winning_bid_id,
+                    "trigger": "deadline",
+                },
+            )
+        except Exception:  # noqa: BLE001 - auditing must not break the sweep
+            db.rollback()
 
 
 def list_open(db: Session) -> list[Auction]:

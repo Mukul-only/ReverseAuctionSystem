@@ -1,8 +1,14 @@
-"""Bid signing primitives.
+"""HMAC signing primitives for bids and the audit ledger.
 
-Every bid is sealed with HMAC-SHA256 under a key derived per auction with
-HKDF. The canonical payload is a deterministic JSON document built only from
-stored columns, so the signature can be recomputed during verification.
+Two independent, domain-separated chains are sealed with HMAC-SHA256 under
+keys derived from the application secret with HKDF:
+
+- **Bids** — a per-auction key; each bid links to the previous bid.
+- **Audit** — a single application-wide key; each event links to the previous
+  event.
+
+Both use a canonical JSON payload built only from stored columns, so the
+signature can be recomputed during verification.
 
 Honest limitation: this protects against database-level tampering, not against
 a fully malicious server that controls the signing key. The threat model is
@@ -24,6 +30,7 @@ SIGNATURE_HEX_LENGTH = HASH_BYTES * 2
 # A domain-separated salt keeps these keys distinct from any other use of the
 # application secret.
 _HKDF_SALT = b"revauction/bid-signing/v1"
+_AUDIT_HKDF_SALT = b"revauction/audit-signing/v1"
 _INFO_PREFIX = b"auction:"
 
 
@@ -69,6 +76,65 @@ def _canonical_timestamp(created_at: datetime) -> str:
     SQLite round-trips this exact format, so the signature survives a reload.
     """
     return created_at.strftime("%Y-%m-%dT%H:%M:%S.%f")
+
+
+def audit_signing_key() -> bytes:
+    """Derived once for the whole audit ledger.
+
+    Domain separation from the bid keys comes from a distinct HKDF salt, so
+    knowing one key never reveals the other.
+    """
+    settings = get_settings()
+    return hkdf_sha256(
+        ikm=settings.secret_key.encode("utf-8"),
+        salt=_AUDIT_HKDF_SALT,
+        info=b"audit-events",
+    )
+
+
+def canonical_metadata(metadata: dict[str, object] | None) -> str:
+    """Deterministic JSON for the stored ``metadata_json`` column.
+
+    Sorted keys and fixed separators mean the same logical metadata always
+    hashes to the same bytes.
+    """
+    return json.dumps(
+        metadata or {}, sort_keys=True, separators=(",", ":"), default=str
+    )
+
+
+def canonical_audit_payload(
+    *,
+    actor_id: int | None,
+    action: str,
+    entity_type: str | None,
+    entity_id: str | None,
+    metadata_json: str,
+    created_at: datetime,
+    prev_hash: str | None,
+) -> bytes:
+    """Build the byte string signed for one audit event.
+
+    ``seq`` is deliberately excluded: it is an autoincrement column that only
+    exists after the insert, and ordering is already bound by ``prev_hash``.
+    """
+    document = {
+        "actor_id": actor_id,
+        "action": action,
+        "entity_type": entity_type,
+        "entity_id": entity_id,
+        "metadata": metadata_json,
+        "created_at": _canonical_timestamp(created_at),
+        "prev_hash": prev_hash or "",
+    }
+    return json.dumps(document, sort_keys=True, separators=(",", ":")).encode(
+        "utf-8"
+    )
+
+
+def chain_hash(key: bytes, payload: bytes) -> str:
+    """Alias of ``sign_payload`` that reads better for ledger chains."""
+    return sign_payload(key, payload)
 
 
 def canonical_bid_payload(

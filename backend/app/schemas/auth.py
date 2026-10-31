@@ -47,15 +47,62 @@ class LoginRequest(BaseModel):
     password: str = Field(min_length=1, max_length=128)
 
 
+class LoginRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    email: EmailStr
+    password: str = Field(min_length=1, max_length=128)
+
+
 class UserOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
     email: EmailStr
     role: Role
+    totp_enabled: bool = False
     created_at: datetime
 
 
 class AuthResponse(BaseModel):
     user: UserOut
     csrf_token: str
+
+
+class LoginResponse(BaseModel):
+    """Login either completes or hands back a second-factor challenge."""
+
+    mfa_required: bool = False
+    challenge: str | None = None
+    user: UserOut | None = None
+    csrf_token: str | None = None
+
+
+# --- Second factor -------------------------------------------------------
+
+
+class MfaSetupRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    # Re-authentication: an attacker with a stolen session cannot enrol.
+    password: str = Field(min_length=1, max_length=128)
+
+
+class MfaSetupResponse(BaseModel):
+    secret: str
+    otpauth_uri: str
+    issuer: str
+
+
+class MfaCodeRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    password: str = Field(min_length=1, max_length=128)
+    code: str = Field(min_length=6, max_length=8)
+
+
+class MfaLoginRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    challenge: str = Field(min_length=8, max_length=4096)
+    code: str = Field(min_length=6, max_length=8)

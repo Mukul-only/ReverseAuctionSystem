@@ -17,10 +17,14 @@ from sqlalchemy import select
 from app.db import SessionLocal, init_db
 from app.models import Auction, AuctionStatus, Role, User
 from app.models.mixins import utcnow
+from app.security import totp as totp_utils
 from app.security.passwords import hash_password
 from app.services import bid_service
 
 DEMO_PASSWORD = "DemoPass!234"
+
+# Fixed demo secret so the viva can enrol an authenticator from a printout.
+ADMIN_TOTP_SECRET = "JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP"
 
 DEMO_USERS: tuple[tuple[str, Role], ...] = (
     ("admin@revauction.dev", Role.ADMIN),
@@ -86,6 +90,16 @@ def seed() -> None:
         auctions_created = 0
         seeded_auctions: list[Auction] = []
 
+        # Enrol the demo administrator's second factor so the admin console is
+        # reachable out of the box. The secret is fixed and printed below.
+        admin = users["admin@revauction.dev"]
+        if not admin.totp_enabled:
+            admin.totp_secret_enc = totp_utils.encrypt_secret(
+                ADMIN_TOTP_SECRET, user_id=admin.id
+            )
+            admin.totp_enabled = True
+            admin.totp_last_step = None
+
         for spec in AUCTION_SPECS:
             title = str(spec["title"])
             existing = db.scalar(select(Auction).where(Auction.title == title))
@@ -139,6 +153,19 @@ def seed() -> None:
         print(f"    - {email:<28} {role.value}")
     print(f"  auctions created: {auctions_created}")
     print(f"  signed bids created: {bids_created}")
+    print("  admin 2FA: enabled")
+    print(f"    secret:  {ADMIN_TOTP_SECRET}")
+    print(
+        "    otpauth: "
+        + totp_utils.provisioning_uri(
+            ADMIN_TOTP_SECRET, account="admin@revauction.dev"
+        )
+    )
+    print(
+        "    current code: "
+        + totp_utils.generate_code(ADMIN_TOTP_SECRET)
+        + "  (rotates every 30s)"
+    )
 
 
 if __name__ == "__main__":

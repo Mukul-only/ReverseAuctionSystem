@@ -5,6 +5,7 @@ pydantic==2.14.2
 pydantic-settings==2.16.2
 argon2-cffi==25.1.0
 PyOTP==2.10.0
+cryptography==50.0.2
 itsdangerous==2.2.0
 python-multipart==0.0.33
 python-dotenv==1.2.4

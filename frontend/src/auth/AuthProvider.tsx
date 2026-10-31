@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import {
+  completeMfaLogin,
   getMe,
   login as apiLogin,
   logout as apiLogout,
@@ -44,7 +45,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const signIn = useCallback(async (email: string, password: string) => {
-    setUser(adopt(await apiLogin({ email, password })))
+    const result = await apiLogin({ email, password })
+
+    if (result.mfa_required) {
+      // No session exists yet; hold the signed challenge in page state only.
+      setCsrfToken(null)
+      return { mfaRequired: true, challenge: result.challenge }
+    }
+
+    if (!result.user || !result.csrf_token) {
+      throw new Error('Unexpected login response.')
+    }
+    setUser(adopt({ user: result.user, csrf_token: result.csrf_token }))
+    return { mfaRequired: false, challenge: null }
+  }, [])
+
+  const completeMfa = useCallback(async (challenge: string, code: string) => {
+    const result = await completeMfaLogin({ challenge, code })
+    if (!result.user || !result.csrf_token) {
+      throw new Error('Unexpected verification response.')
+    }
+    setUser(adopt({ user: result.user, csrf_token: result.csrf_token }))
   }, [])
 
   const signUp = useCallback(
@@ -66,9 +87,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  const refresh = useCallback(async () => {
+    setUser(adopt(await getMe()))
+  }, [])
+
   const value = useMemo(
-    () => ({ user, loading, signIn, signUp, signOut }),
-    [user, loading, signIn, signUp, signOut],
+    () => ({ user, loading, signIn, completeMfa, signUp, signOut, refresh }),
+    [user, loading, signIn, completeMfa, signUp, signOut, refresh],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

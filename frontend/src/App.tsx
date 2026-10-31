@@ -7,6 +7,8 @@ import { Auctions } from './pages/Auctions'
 import { NewAuction } from './pages/NewAuction'
 import { AuctionDetail } from './pages/AuctionDetail'
 import { Security } from './pages/Security'
+import { AccountSecurity } from './pages/AccountSecurity'
+import { Admin } from './pages/Admin'
 import { NotFound } from './pages/NotFound'
 
 export default function App() {
@@ -20,6 +22,8 @@ export default function App() {
           <Route path="/auctions/new" element={<NewAuction />} />
           <Route path="/auctions/:id" element={<AuctionDetail />} />
           <Route path="/security" element={<Security />} />
+          <Route path="/account/security" element={<AccountSecurity />} />
+          <Route path="/admin" element={<Admin />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </AppShell>

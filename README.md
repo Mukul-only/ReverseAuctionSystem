@@ -23,11 +23,11 @@ control is proven by an attack test suite.
 | 5 | Auction lifecycle | ✅ done |
 | 6 | Signed bid ledger — descending rules, HMAC per bid, hash chain, verification | ✅ done |
 | 7 | Live feed — authenticated WebSocket, origin checks, polling fallback | ✅ done |
-| 8 | TOTP MFA + admin dashboard | ⬜ next |
-| 9 | Hash-chained audit log | ⬜ |
-| 10 | Hardening pass | ⬜ |
-| 11 | Attack test suite + demo script | ⬜ |
-| 12 | Documentation & report | ⬜ |
+| 8 | TOTP MFA — encrypted secrets, login challenge, admin console | ✅ done |
+| 9 | Audit ledger — HMAC hash chain, verification, signed anchor | ✅ done |
+| 10 | Hardening — HSTS, size limits, safe errors, header review | ✅ done |
+| 11 | Attack test suite + live demo script | ✅ done |
+| 12 | Documentation — security, threat model, architecture | ✅ done |
 
 ---
 
@@ -38,6 +38,9 @@ control is proven by an attack test suite.
 - **Security:** Argon2id · opaque server sessions · CSRF tokens · TOTP (PyOTP) ·
   HMAC-SHA256 hash chains
 - **Design:** Vercel Geist — see [`docs/DESIGN.md`](./docs/DESIGN.md)
+- **Docs:** [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) ·
+  [`docs/SECURITY.md`](./docs/SECURITY.md) (OWASP Top 10) ·
+  [`docs/THREAT_MODEL.md`](./docs/THREAT_MODEL.md)
 
 Verified on Python 3.14 and Node 26.
 
@@ -67,8 +70,24 @@ Demo accounts all use `DemoPass!234`:
 `admin@revauction.dev`, `buyer@revauction.dev`, `seller@revauction.dev`,
 `seller2@revauction.dev`.
 
+The seed enrols the administrator's TOTP factor with the fixed demo secret
+`JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP` from the report. Any authenticator app can
+scan the printed `otpauth://` URI; the seed also prints the current code.
+
 The app **refuses to boot** if `SECRET_KEY` is missing, shorter than 32
 characters, or a known placeholder.
+
+### Attack demo
+
+With the server running, this drives real attacks and prints a pass/fail line
+for each control (CSRF, origin, SQLi, XSS, IDOR, bid rules, MFA, audit chain,
+forged WebSocket origin):
+
+```bash
+cd backend
+.venv/bin/python -m scripts.attack_demo
+# add --tamper to prove a direct database edit breaks the bid chain
+```
 
 ### 2. Frontend (dev, hot reload)
 
@@ -106,9 +125,13 @@ cd backend
 |---|---|---|
 | GET | `/api/health` | Liveness probe |
 | POST | `/api/auth/register` | Create a buyer/seller account and session |
-| POST | `/api/auth/login` | Authenticate and rotate the session |
+| POST | `/api/auth/login` | Authenticate; returns an MFA challenge when enrolled |
+| POST | `/api/auth/mfa/login` | Complete a login with a TOTP code |
 | POST | `/api/auth/logout` | Revoke the session (requires CSRF) |
 | GET | `/api/auth/me` | Current user + CSRF token |
+| POST | `/api/auth/mfa/setup` | Begin TOTP enrolment (password re-entry) |
+| POST | `/api/auth/mfa/verify` | Confirm a code and enable TOTP |
+| POST | `/api/auth/mfa/disable` | Disable TOTP (password + current code) |
 | GET | `/api/auctions` | List open auctions (public) |
 | GET | `/api/auctions/mine` | Auctions owned by the caller |
 | POST | `/api/auctions` | Create an auction (buyer + CSRF only) |
@@ -118,6 +141,14 @@ cd backend
 | GET | `/api/auctions/{id}/bids` | Signed bid ledger in placement order (public) |
 | POST | `/api/auctions/{id}/bids` | Place a descending bid (seller + CSRF; idempotent) |
 | GET | `/api/auctions/{id}/verify` | Recompute the hash chain and report tampering |
+| GET | `/api/admin/users` | List users (admin + MFA) |
+| PATCH | `/api/admin/users/{id}/role` | Change a role (self/last-admin guarded) |
+| POST | `/api/admin/users/{id}/unlock` | Clear a lockout |
+| POST | `/api/admin/users/{id}/revoke-sessions` | Revoke every session for a user |
+| GET | `/api/admin/audit` | Audit events, newest first |
+| POST | `/api/admin/audit/verify` | Recompute the audit chain |
+| GET | `/api/admin/audit/anchor` | Signed digest of the chain head |
+| GET | `/api/admin/security-events` | Auth / MFA / admin events only |
 | WS | `/ws/auctions/{id}` | Live bid/status feed (session cookie + Origin check) |
 | GET | `/api/docs` | OpenAPI UI (Swagger) |
 
@@ -136,10 +167,12 @@ cd backend
 │   │   ├── realtime.py      # per-auction WebSocket hub + wire format
 │   │   ├── models/          # users, sessions, auctions, bids, audit events
 │   │   ├── schemas/         # Pydantic request/response models
-│   │   ├── routers/         # health, auth, auctions, bids, ws
-│   │   ├── services/        # auth policy, auction lifecycle + ownership, bids
-│   │   └── security/        # Argon2id, sessions, CSRF, rate limiting, HKDF/HMAC
-│   ├── scripts/seed.py      # demo users, auctions, signed bids
+│   │   ├── routers/         # health, auth, auctions, bids, admin, ws
+│   │   ├── services/        # auth, mfa, admin, auction, bid, audit
+│   │   └── security/        # passwords, sessions, CSRF, rate limiting, crypto, TOTP
+│   ├── scripts/
+│   │   ├── seed.py          # demo users, auctions, signed bids, admin MFA
+│   │   └── attack_demo.py   # live attack demonstration for the viva
 │   ├── tests/
 │   └── requirements.txt
 ├── frontend/
@@ -147,11 +180,15 @@ cd backend
 │       ├── components/ui/   # Button, Input, Textarea, Card, Badge, Eyebrow
 │       ├── components/auction/  # cards, status badge, countdown
 │       ├── hooks/           # useAuctionSocket (live feed + reconnect)
-│       ├── pages/           # Landing, Login, Auctions, NewAuction, Detail
+│       ├── pages/           # Landing, Login, Auctions, NewAuction, Detail,
+│       │                    # AccountSecurity, Admin
 │       ├── lib/             # api client, class + money/date helpers
 │       └── index.css        # Geist tokens + mesh gradient
 └── docs/
-    └── DESIGN.md            # adopted design system
+    ├── DESIGN.md            # adopted design system
+    ├── ARCHITECTURE.md      # components, data flow, trust boundaries
+    ├── SECURITY.md          # controls mapped to OWASP Top 10
+    └── THREAT_MODEL.md      # assets, adversaries, mitigations, limits
 ```
 
 ---
@@ -166,11 +203,18 @@ cd backend
 | Cancel an open auction | owner only | ❌ | ✅ |
 | Place a descending bid | ❌ | ✅ | ❌ |
 | Read the bid ledger / verify chain | ✅ | ✅ | ✅ |
+| Manage users, roles, sessions | ❌ | ❌ | ✅ + MFA |
+| Read the audit ledger / verify chain | ❌ | ❌ | ✅ + MFA |
 
 Every mutation also requires a session-bound CSRF token. Ownership is checked
 server-side on every route, so changing an ID in the URL cannot reach another
 buyer's auction (IDOR). Sellers can only bid as themselves, and an auction owner
 can never bid on their own requirement even if their role changes.
+
+**Separation of duties:** an administrator can cancel any auction, but cannot
+create, bid on, close, or award one — only the owning buyer closes. Admin
+routes additionally require an enrolled TOTP factor, so a stolen admin password
+alone reaches nothing.
 
 ---
 
@@ -181,8 +225,10 @@ can never bid on their own requirement even if their role changes.
 - Sessions use `__Host-` cookies with `HttpOnly`, `Secure`, and
   `SameSite=Lax`.
 - Baseline headers are already applied: `X-Content-Type-Options`,
-  `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, and a strict CSP
-  when the backend serves the built SPA.
+  `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, a strict CSP when
+  the backend serves the built SPA, and HSTS whenever cookies are `Secure`.
+- Oversized bodies are refused with `413` before they are read, and unhandled
+  exceptions return a generic `500` without stack traces.
 - The SPA fallback rejects `api/` and `ws/` prefixes and blocks path traversal
   by resolving candidates against the dist root.
 - Money is stored as integer minor units — never floats.
@@ -229,3 +275,36 @@ can never bid on their own requirement even if their role changes.
 - The client reconnects with exponential backoff, sends a heartbeat, and keeps
   a slow poll running as a safety net so missed frames (including deadline
   closes) are reconciled.
+
+### Two-factor authentication (Milestone 8)
+
+- TOTP secrets are encrypted at rest with **AES-256-GCM** under a key derived
+  from `SECRET_KEY` via HKDF; the user id is bound as associated data, so a
+  ciphertext copied to another account fails to decrypt.
+- Enrolment is two-step: a pending secret is stored, then a live code must
+  confirm it. Enabling, disabling, and enrolling all require the password
+  again. Disabling also requires a current code.
+- Login with MFA enabled returns a **signed, short-lived challenge** instead of
+  a session. The session cookie is only issued after `/api/auth/mfa/login`
+  verifies the code. Codes are single-use per 30-second step
+  (`totp_last_step`), which blocks replay.
+- Admin routes are blocked until the account enrols a factor
+  (`require_admin_mfa`). TOTP attempts are rate-limited.
+- The seed enrols the demo administrator with a fixed secret so the console is
+  demonstrable; production accounts would enrol their own device.
+
+### Audit ledger (Milestone 9)
+
+- Logins, failed logins, registrations, MFA changes, auction
+  creation/close/cancel, bids, and admin actions append to `audit_events`.
+- Each event stores `prev_hash` plus an **HMAC-SHA256** over a canonical
+  payload (actor, action, entity, metadata, timestamp, previous hash). Events
+  are ordered by `seq`; verification recomputes every link.
+- The table is append-only at the SQL level (no-update / no-delete triggers).
+  Verification detects edits, inserts, deletions, and reordering even if those
+  triggers are removed.
+- `POST /api/admin/audit/verify` returns a report naming the first bad `seq`.
+  `GET /api/admin/audit/anchor` returns a signed digest of the chain head; store
+  it off-system to detect truncation of the newest events later.
+- Honest limitation: like the bid ledger, this detects database tampering, not
+  a fully malicious application server that holds the HMAC key.

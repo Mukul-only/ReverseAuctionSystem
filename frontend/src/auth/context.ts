@@ -1,12 +1,19 @@
 import { createContext, useContext } from 'react'
 import type { Role, User } from '../lib/api'
 
+export interface SignInResult {
+  mfaRequired: boolean
+  challenge: string | null
+}
+
 export interface AuthContextValue {
   user: User | null
   loading: boolean
-  signIn: (email: string, password: string) => Promise<void>
+  signIn: (email: string, password: string) => Promise<SignInResult>
+  completeMfa: (challenge: string, code: string) => Promise<void>
   signUp: (email: string, password: string, role: Role) => Promise<void>
   signOut: () => Promise<void>
+  refresh: () => Promise<void>
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null)

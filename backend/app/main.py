@@ -9,6 +9,7 @@ origin).
 from __future__ import annotations
 
 import asyncio
+import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -24,12 +25,14 @@ from starlette.responses import Response
 from .config import get_settings
 from .db import init_db
 from .realtime import hub
+from .routers.admin import router as admin_router
 from .routers.auctions import router as auctions_router
 from .routers.auth import router as auth_router
 from .routers.bids import router as bids_router
 from .routers.ws import router as ws_router
 
 settings = get_settings()
+logger = logging.getLogger(__name__)
 
 # backend/app/main.py -> repo root -> frontend/dist
 FRONTEND_DIST = Path(__file__).resolve().parents[2] / "frontend" / "dist"
@@ -45,7 +48,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(
     title=settings.app_name,
-    version="0.7.0",
+    version="0.8.0",
     docs_url="/api/docs",
     redoc_url=None,
     openapi_url="/api/openapi.json",
@@ -81,6 +84,12 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
                 "base-uri 'self'; "
                 "form-action 'self'",
             )
+        # HSTS only makes sense over TLS, so it follows the cookie policy.
+        if settings.cookie_secure:
+            response.headers.setdefault(
+                "Strict-Transport-Security",
+                f"max-age={settings.hsts_seconds}; includeSubDomains",
+            )
         return response
 
 
@@ -103,8 +112,28 @@ class OriginCheckMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 
 
+class BodySizeLimitMiddleware(BaseHTTPMiddleware):
+    """Refuse oversized request bodies before they are read into memory."""
+
+    async def dispatch(self, request: Request, call_next) -> Response:  # type: ignore[no-untyped-def]
+        raw_length = request.headers.get("content-length")
+        if raw_length is not None:
+            try:
+                length = int(raw_length)
+            except ValueError:
+                return JSONResponse(
+                    {"detail": "Invalid Content-Length."}, status_code=400
+                )
+            if length > settings.max_request_bytes:
+                return JSONResponse(
+                    {"detail": "Request body too large."}, status_code=413
+                )
+        return await call_next(request)
+
+
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(OriginCheckMiddleware)
+app.add_middleware(BodySizeLimitMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[settings.frontend_origin],
@@ -117,7 +146,18 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(auctions_router)
 app.include_router(bids_router)
+app.include_router(admin_router)
 app.include_router(ws_router)
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Never leak stack traces or internal details to a client.
+
+    The details go to the server log; the response is a stable, generic error.
+    """
+    logger.exception("Unhandled error on %s %s", request.method, request.url.path)
+    return JSONResponse({"detail": "Internal server error."}, status_code=500)
 
 
 @app.get("/api/health", tags=["system"])

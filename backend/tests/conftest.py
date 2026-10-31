@@ -9,6 +9,7 @@ os.environ.setdefault("SECRET_KEY", "test-only-" + "a" * 64)
 from collections.abc import Iterator  # noqa: E402
 
 import pytest  # noqa: E402
+import pyotp  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 from sqlalchemy import Engine, create_engine  # noqa: E402
 from sqlalchemy.orm import Session, sessionmaker  # noqa: E402
@@ -26,6 +27,7 @@ from app.routers.auctions import create_limiter  # noqa: E402
 from app.routers.auth import (  # noqa: E402
     login_account_limiter,
     login_ip_limiter,
+    mfa_limiter,
     register_limiter,
 )
 from app.routers.bids import bid_limiter  # noqa: E402
@@ -37,6 +39,7 @@ _LIMITERS = (
     login_ip_limiter,
     login_account_limiter,
     register_limiter,
+    mfa_limiter,
     create_limiter,
     bid_limiter,
 )
@@ -117,6 +120,31 @@ def register(
         "/api/auth/register",
         json={"email": email, "password": password, "role": role},
     )
+
+
+def csrf_headers(client: TestClient) -> dict[str, str]:
+    """Read the session-bound CSRF token from /auth/me and wrap it in a header."""
+    token = client.get("/api/auth/me").json()["csrf_token"]
+    return {"X-CSRF-Token": token}
+
+
+def enable_mfa(client: TestClient, *, password: str = PASSWORD) -> str:
+    """Enrol TOTP for the current session and return the shared secret."""
+    headers = csrf_headers(client)
+    setup = client.post(
+        "/api/auth/mfa/setup", json={"password": password}, headers=headers
+    )
+    assert setup.status_code == 200, setup.text
+    secret = setup.json()["secret"]
+
+    code = pyotp.TOTP(secret).now()
+    verify = client.post(
+        "/api/auth/mfa/verify",
+        json={"password": password, "code": code},
+        headers=headers,
+    )
+    assert verify.status_code == 200, verify.text
+    return secret
 
 
 def csrf_of(response) -> str:

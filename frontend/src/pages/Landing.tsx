@@ -17,7 +17,11 @@ const MILESTONES: Array<{ id: string; label: string; state: MilestoneState }> = 
   { id: '05', label: 'Auction lifecycle', state: 'done' },
   { id: '06', label: 'Signed bid ledger', state: 'done' },
   { id: '07', label: 'Live WebSocket feed', state: 'done' },
-  { id: '08', label: 'TOTP MFA + admin', state: 'next' },
+  { id: '08', label: 'TOTP MFA + admin console', state: 'done' },
+  { id: '09', label: 'Hash-chained audit log', state: 'done' },
+  { id: '10', label: 'Hardening pass', state: 'done' },
+  { id: '11', label: 'Attack demo', state: 'done' },
+  { id: '12', label: 'Security documentation', state: 'done' },
 ]
 
 const FEATURES = [

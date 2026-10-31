@@ -19,11 +19,19 @@ from ..models import Auction, Role, User, UserSession
 from ..realtime import auction_event, hub
 from ..schemas.auction import AuctionCreate, AuctionOut
 from ..security.ratelimit import SlidingWindowLimiter
-from ..services import auction_service
+from ..services import audit_service, auction_service
 
 router = APIRouter(prefix="/api/auctions", tags=["auctions"])
 
 create_limiter = SlidingWindowLimiter(limit=30, window_seconds=3600)
+
+
+def _audit(db: Session, **kwargs: object) -> None:
+    """Best-effort audit write: never let logging break the action itself."""
+    try:
+        audit_service.record(db, **kwargs)  # type: ignore[arg-type]
+    except Exception:  # noqa: BLE001
+        db.rollback()
 
 
 def _load(db: Session, auction_id: int) -> Auction:
@@ -83,6 +91,14 @@ def create_auction(
         currency=payload.currency,
         duration_hours=payload.duration_hours,
     )
+    _audit(
+        db,
+        actor_id=user.id,
+        action="auction.created",
+        entity_type="auction",
+        entity_id=auction.id,
+        metadata={"title": auction.title, "starting_price": auction.starting_price},
+    )
     return AuctionOut.model_validate(auction)
 
 
@@ -111,6 +127,17 @@ def close_auction(
             status_code=status.HTTP_409_CONFLICT, detail=str(error)
         ) from None
     hub.broadcast_threadsafe(auction.id, auction_event(auction))
+    _audit(
+        db,
+        actor_id=user.id,
+        action="auction.closed",
+        entity_type="auction",
+        entity_id=auction.id,
+        metadata={
+            "status": auction.status.value,
+            "winning_bid_id": auction.winning_bid_id,
+        },
+    )
     return AuctionOut.model_validate(auction)
 
 
@@ -134,4 +161,12 @@ def cancel_auction(
             status_code=status.HTTP_409_CONFLICT, detail=str(error)
         ) from None
     hub.broadcast_threadsafe(auction.id, auction_event(auction))
+    _audit(
+        db,
+        actor_id=user.id,
+        action="auction.cancelled",
+        entity_type="auction",
+        entity_id=auction.id,
+        metadata={"actor_role": user.role.value},
+    )
     return AuctionOut.model_validate(auction)

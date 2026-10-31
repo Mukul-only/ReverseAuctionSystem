@@ -66,6 +66,15 @@ class Settings(BaseSettings):
     bid_rate_limit: int = 30
     bid_rate_window_seconds: int = 60
 
+    # Second factor
+    mfa_challenge_seconds: int = 300
+    mfa_rate_limit: int = 8
+    mfa_rate_window_seconds: int = 300
+
+    # Transport / hardening
+    hsts_seconds: int = 31536000
+    max_request_bytes: int = 1_000_000
+
     @property
     def allowed_origins(self) -> list[str]:
         """Origins permitted to send state-changing requests.

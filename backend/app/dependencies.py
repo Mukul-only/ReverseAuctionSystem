@@ -62,3 +62,22 @@ def require_roles(*roles: Role) -> Callable[..., User]:
         return user
 
     return dependency
+
+
+def require_admin_mfa(
+    user: User = Depends(require_roles(Role.ADMIN)),
+) -> User:
+    """Admins must have enrolled a second factor before using admin tools.
+
+    This is what makes the admin separation of duties meaningful: a stolen
+    password alone cannot reach the console.
+    """
+    if not user.totp_enabled:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                "Two-factor authentication must be enabled before using "
+                "administrator tools."
+            ),
+        )
+    return user

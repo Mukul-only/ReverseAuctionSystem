@@ -16,7 +16,7 @@ from ..models import Auction, Role, User, UserSession
 from ..realtime import bid_event, hub
 from ..schemas.bid import BidCreate, BidOut, ChainVerification
 from ..security.ratelimit import SlidingWindowLimiter
-from ..services import auction_service, bid_service
+from ..services import audit_service, auction_service, bid_service
 
 settings = get_settings()
 
@@ -98,6 +98,21 @@ def place_bid(
     else:
         # Push the new signed bid to every live viewer of this auction.
         hub.broadcast_threadsafe(auction.id, bid_event(bid, auction))
+        try:
+            audit_service.record(
+                db,
+                actor_id=seller.id,
+                action="bid.placed",
+                entity_type="bid",
+                entity_id=bid.id,
+                metadata={
+                    "auction_id": auction.id,
+                    "amount": bid.amount,
+                    "signature": bid.signature,
+                },
+            )
+        except Exception:  # noqa: BLE001 - auditing must not break the bid
+            db.rollback()
     return BidOut.model_validate(bid)
 
 
